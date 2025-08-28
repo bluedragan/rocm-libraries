@@ -416,7 +416,8 @@ namespace rocRoller
             if(m_params->prefetch)
             {
                 auto visitor = AddPrefetchVisitor(m_params, m_context);
-                AssertFatal(m_params->unrollK > 1, "KLoop must be unrolled when prefetching.");
+                AssertFatal(m_params->unrollK > m_params->prefetchInFlight,
+                            "KLoop must be unrolled when prefetching.");
                 visitor.stage(graph);
                 visitor.commit(graph);
 
@@ -432,21 +433,19 @@ namespace rocRoller
             barrierVisitor.commit(graph);
 
             removeRedundantSequenceEdges(graph);
+            removeRedundantBodyEdges(graph);
 
             return graph;
         }
 
-        void AddPrefetchVisitor::commit(KernelGraph& k)
+        void AddPrefetchVisitor::commit(KernelGraph& graph)
         {
             Log::debug("KernelGraph::AddPrefetch()::commit()");
 
             for(auto [forLoop, numUnroll] : m_prefetchLoops)
             {
-                commitForLoop(k, forLoop, numUnroll);
+                commitForLoop(graph, forLoop, numUnroll);
             }
-
-            removeRedundantSequenceEdges(k);
-            removeRedundantBodyEdges(k);
         }
 
         /**
@@ -484,6 +483,7 @@ namespace rocRoller
                        || *nary == NaryArgument::LHS_SCALE || *nary == NaryArgument::RHS_SCALE;
             };
 
+            // XXX CAN I GET RID OF THIS?
             std::map<int, int> loadMap = m_exchangeLoadMap;
             for(auto loadTag : graph.control.findNodes(starts, isLoadPredicate))
             {
@@ -617,7 +617,7 @@ namespace rocRoller
             int numInFlight = m_params->prefetchInFlight;
 
             // Loads first
-            for(int u = 0; u < numInFlight; ++u)
+            for(int u = 0; u <= numInFlight; ++u)
             {
                 for(auto load : loadsByUnroll[u])
                 {
@@ -705,8 +705,8 @@ namespace rocRoller
             // Update SetCoordinates for LoadTile operations
             for(uint u = 0; u < numUnroll; ++u)
             {
-                auto prefetchGlobalU   = (u + numInFlight) % numUnroll;
-                auto prefetchCoordExpr = literal(u + numInFlight);
+                auto prefetchGlobalU   = (u + numInFlight + 1) % numUnroll;
+                auto prefetchCoordExpr = literal(u + numInFlight + 1);
 
                 for(auto load : loadsByUnroll[prefetchGlobalU])
                 {
@@ -772,7 +772,7 @@ namespace rocRoller
                                    .to<std::vector>();
                 orderMemoryNodes(graph, toOrder, false);
 
-                auto globalPrefetchU = (u + numInFlight) % numUnroll;
+                auto globalPrefetchU = (u + numInFlight + 1) % numUnroll;
                 auto ldsPrefetchU    = (u + 1) % numUnroll;
                 auto barrier         = graph.control.addElement(Barrier());
 
@@ -969,8 +969,8 @@ namespace rocRoller
                         // If not, an eager wave may enter the next
                         // segment and over-write LDS.
                         //
-                        // For prefetch > 2 this is not necessary.
-                        if(numInFlight <= 2)
+                        // For numInFlight >= 2 this is not necessary.
+                        if(numInFlight < 2)
                             graph.control.addElement(Sequence(), {lastLoadFromLDS}, {barrier});
                     }
                 }
@@ -1010,7 +1010,7 @@ namespace rocRoller
                 for(auto const exchangeTag : exchanges)
                 {
                     auto prefetchGlobalU
-                        = (m_exchangeSegment[exchangeTag] + numInFlight) % numUnroll;
+                        = (m_exchangeSegment[exchangeTag] + numInFlight + 1) % numUnroll;
 
                     auto loadTag = getLoadForExchange(exchangeTag, graph);
 

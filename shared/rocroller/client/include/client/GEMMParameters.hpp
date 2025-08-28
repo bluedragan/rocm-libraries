@@ -169,7 +169,7 @@ namespace rocRoller
                 bool storeLDSD = true;
 
                 bool prefetch          = false;
-                int  prefetchInFlight  = 2;
+                int  prefetchInFlight  = 1;
                 int  prefetchLDSFactor = 0;
                 bool prefetchMixMemOps = false;
                 bool betaInFma         = true;
