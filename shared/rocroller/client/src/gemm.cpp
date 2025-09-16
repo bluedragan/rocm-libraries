@@ -1074,6 +1074,7 @@ namespace rocRoller::Client::GEMMClient::CLI
         std::make_pair("--betaInFMA", &SolutionParameters::betaInFma),
         std::make_pair("--unroll_x", &SolutionParameters::unrollX),
         std::make_pair("--unroll_y", &SolutionParameters::unrollY),
+        std::make_pair("--unroll_k", &SolutionParameters::unrollK),
         std::make_pair("--scheduler", &SolutionParameters::scheduler),
         std::make_pair("--schedulerCost", &SolutionParameters::schedulerCost),
         std::make_pair("--matchMemoryAccess", &SolutionParameters::matchMemoryAccess),
@@ -1261,6 +1262,7 @@ namespace rocRoller::Client::GEMMClient::CLI
         update(SN(&SP::prefetchInFlight), solution.prefetchInFlight);
         update(SN(&SP::prefetchLDSFactor), solution.prefetchLDSFactor);
         update(SN(&SP::prefetchMixMemOps), solution.prefetchMixMemOps);
+        update(SN(&SP::unrollK), solution.unrollK);
 
         // StreamK
 
@@ -1337,6 +1339,7 @@ int main(int argc, const char* argv[])
 
         .unrollX = 0,
         .unrollY = 0,
+        .unrollK = 0,
 
         .scheduler         = "Priority",
         .matchMemoryAccess = true,
@@ -1511,6 +1514,7 @@ int main(int argc, const char* argv[])
                    "Force an XCC-aware workgroup remapping value. (Optional)");
     app.add_option(SN(&SP::unrollX), "Unroll size in X.");
     app.add_option(SN(&SP::unrollY), "Unroll size in Y.");
+    app.add_option(SN(&SP::unrollK), "Unroll size in K.");
 
     app.add_option(
         SN(&SP::loadPathA),

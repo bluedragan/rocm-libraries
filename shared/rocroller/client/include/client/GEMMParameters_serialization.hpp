@@ -238,6 +238,7 @@ namespace rocRoller::Serialization
             iot::mapRequired(io, "workgroupRemapXCCValue", params.workgroupRemapXCCValue);
             iot::mapRequired(io, "unroll_x", params.unrollX);
             iot::mapRequired(io, "unroll_y", params.unrollY);
+            iot::mapRequired(io, "unroll_k", params.unrollK);
             iot::mapRequired(io, "load_A", params.loadPathA);
             iot::mapRequired(io, "load_B", params.loadPathB);
             iot::mapRequired(io, "storeLDS_D", params.storeLDSD);
