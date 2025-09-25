@@ -222,8 +222,8 @@ class GEMMSolution:
     prefetchLDSFactor: int = 0
     prefetchMixMemOps: bool = False
 
-    loadLDSScale_A: bool = False
-    loadLDSScale_B: bool = False
+    loadScale_A: str = "BufferToLDSViaVGPR"
+    loadScale_B: str = "BufferToLDSViaVGPR"
     swizzleScale: bool = False
     swizzleTileSize: MKNLTuple = MKNLTuple(0, 0, 0, 0)
     prefetchScale: bool = False
