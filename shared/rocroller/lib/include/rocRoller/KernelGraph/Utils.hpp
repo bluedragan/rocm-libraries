@@ -782,6 +782,12 @@ namespace rocRoller
         * @brief Return true for operations that read from global to store into LDS and false otherwise.
         */
         bool isGlobalToLDSOp(KernelGraph const& graph, int op);
+
+        /**
+         * @brief Find the Exchange node ...
+         */
+        std::optional<int>
+            getExchangeForMultiply(KernelGraph const& graph, int multiplyTag, NaryArgument arg);
     }
 }
 
