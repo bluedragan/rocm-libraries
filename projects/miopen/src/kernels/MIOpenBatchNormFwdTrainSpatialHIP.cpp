@@ -392,8 +392,14 @@ extern "C" __global__ void __launch_bounds__(
     {
 // TODO: this should also be removed, but using constexpr can lead compile error
 #if(MIO_RUNNING_RESULT == 1)
-        miopen::batchnorm::running_stash<fp_accum_type, fp_accum_c_type, fp_prec_c_type>(
-            resultRunningMean, resultRunningVariance, expAvgFactor, mean, variance, grpid);
+        using StashUpdater = miopen::batchnorm::StashUpdater<fp_accum_c_type>;
+        StashUpdater updater(
+            static_cast<fp_accum_c_type>(mean),
+            static_cast<fp_accum_c_type>(variance),
+            static_cast<fp_accum_c_type>(expAvgFactor));
+
+        miopen::batchnorm::running_stash<fp_accum_c_type, fp_prec_c_type, StashUpdater>(
+            resultRunningMean, resultRunningVariance, updater, grpid);
 #endif
 #if(MIO_SAVE_MEAN_VARIANCE == 1)
         miopen::batchnorm::saved_stash<fp_accum_c_type, fp_prec_c_type>(
