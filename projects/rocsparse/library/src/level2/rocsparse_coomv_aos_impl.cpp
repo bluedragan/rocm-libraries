@@ -447,9 +447,27 @@ rocsparse_status rocsparse::coomv_aos_template(rocsparse_handle          handle,
     ROCSPARSE_CHECKARG_POINTER(6, alpha_device_host);
     ROCSPARSE_CHECKARG_POINTER(11, beta_device_host);
 
+    // if(handle->pointer_mode == rocsparse_pointer_mode_host
+    //    && *alpha_device_host == static_cast<T>(0) && *beta_device_host == static_cast<T>(1))
+    // {
+    //     return rocsparse_status_success;
+    // }
     if(handle->pointer_mode == rocsparse_pointer_mode_host
-       && *alpha_device_host == static_cast<T>(0) && *beta_device_host == static_cast<T>(1))
+       && *alpha_device_host == static_cast<T>(0))
     {
+        if(*beta_device_host != static_cast<T>(1))
+        {
+            if(ysize > 0)
+            {
+                if(y == nullptr)
+                {
+                    return rocsparse_status_invalid_pointer;
+                }
+
+                RETURN_IF_ROCSPARSE_ERROR(
+                    rocsparse::scale_array(handle, ysize, beta_device_host, y));
+            }
+        }
         return rocsparse_status_success;
     }
 
