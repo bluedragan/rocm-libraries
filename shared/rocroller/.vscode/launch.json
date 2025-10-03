@@ -1,0 +1,132 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Catch2 Test",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/test/rocroller-tests-catch",
+            "args": [
+                "Run concatenate expression kernel with vectors"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Gtest Test",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/test/rocroller-tests",
+            "args": [
+                "--gtest_filter='*GPU_BasicGEMMFP16Jammed1x8*'",
+                "--gtest_break_on_failure",
+                "--gtest_catch_exceptions=0"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "gemm",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build_test/bin/client/rocRoller_gemm",
+            "args": [
+                "--mac_m=256",
+                "--mac_n=256",
+                "--mac_k=128",
+                "--wave_m=16",
+                "--wave_n=16",
+                "--wave_k=128",
+                "--wave_b=1",
+                "--workgroup_size_x=128",
+                "--workgroup_size_y=2",
+                "--workgroupMapping=-1,-1",
+                "--workgroupRemapXCC=False",
+                "--workgroupRemapXCCValue=-1",
+                "--unroll_x=0",
+                "--unroll_y=0",
+                "--loadLDS_A=True",
+                "--loadLDS_B=True",
+                "--storeLDS_D=False",
+                "--betaInFma=True",
+                "--direct2LDS_A=True",
+                "--direct2LDS_B=True",
+                "--scheduler=Priority",
+                "--prefetch=True",
+                "--prefetchInFlight=4",
+                "--prefetchLDSFactor=1",
+                "--streamK=False",
+                "--numWGs=0",
+                "--streamKTwoTile=False",
+                "--M=4096",
+                "--N=4096",
+                "--K=32768",
+                "--alpha=2.0",
+                "--beta=0.5",
+                "--type_A=fp4",
+                "--type_B=fp4",
+                "--type_C=half",
+                "--type_D=half",
+                "--type_acc=float",
+                "--trans_A=T",
+                "--trans_B=N",
+                "--prefetchMixMemOps=True",
+                "--num_warmup=1000",
+                "--num_outer=1",
+                "--num_inner=1000",
+                "--visualize=False",
+                "--match_memory_access=True"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build_test/bin",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}
