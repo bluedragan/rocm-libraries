@@ -9,7 +9,8 @@ set(ops_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../tensilelite")
 set(output_dir "${CMAKE_CURRENT_BINARY_DIR}")
 string(REGEX MATCHALL "gfx[a-z0-9]+" archs "${GPU_TARGETS}")
 list(REMOVE_DUPLICATES archs)
-set(extop_cp_depends "")
+set(extop_stamps "")
+set(extop_targets "")
 
 foreach(arch IN LISTS archs)
     set(WAVEFRONT "-mwavefrontsize64")
@@ -73,14 +74,26 @@ foreach(arch IN LISTS archs)
         COMMAND_EXPAND_LISTS
     )
 
-    add_custom_target(extop-library-${arch} ALL
+    add_custom_command(
         DEPENDS
             "${output_code_object_file}"
             ${HIPBLASLT_PYTHON_DEPS}
-            ${extop_cp_depends}
+        OUTPUT "${HIPBLASLT_TENSILE_LIBPATH}/library"
         COMMAND ${HIPBLASLT_PYTHON_COMMAND} "${ops_dir}/ExtOpCreateLibrary.py" --src=${CMAKE_CURRENT_BINARY_DIR} --co=${output_code_object_file} --output=${output_dir} --arch=${arch}
         COMMAND ${CMAKE_COMMAND} -E copy "${output_dir}/hipblasltExtOpLibrary.dat" "${HIPBLASLT_TENSILE_LIBPATH}/library"
+        COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/extop_${arch}.stamp"
         COMMENT "Creating hipblasltExtOpLibrary.dat for ${arch}"
     )
-    list(APPEND extop_cp_depends "extop-library-${arch}")
+
+    add_custom_target(
+        extop-library-${arch} ALL
+        DEPENDS ${extop_stamps}
+    )
+    list(APPEND extop_stamps "${CMAKE_CURRENT_BINARY_DIR}/extop_${arch}.stamp")
+    list(APPEND extop_targets "extop-library-${arch}")
 endforeach()
+
+add_custom_target(
+    extop-libraries ALL
+    DEPENDS ${extop_targets}
+)
