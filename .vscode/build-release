@@ -1,0 +1,8 @@
+#!/bin/bash
+
+buildvar="shared/rocroller/${1:-build_release}"
+rm -rf "$buildvar"
+mkdir "$buildvar"
+cd "$buildvar"
+cmake --preset default:release -B . -S .. -GNinja
+ninja
