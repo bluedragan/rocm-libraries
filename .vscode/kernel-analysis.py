@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import re
 import itertools
+import tempfile
 
 COMMAND = """
 
@@ -53,6 +54,14 @@ def get_disassembly(command: str, kernel_name: str, output_disasm: Path):
 
 
 def get_rocprofv3_trace(command: str, output_dir: Path):
+    # Install rocprof-trace-decoder if not exists
+    if not Path("/opt/rocm-7.1.0/lib/librocprof-trace-decoder.so").exists():
+        with tempfile.TemporaryDirectory() as tmpdir:
+            shell_command(
+                f"wget https://github.com/ROCm/rocprof-trace-decoder/releases/download/0.1.2/rocprof-trace-decoder-ubuntu-22.04-0.1.2-Linux.deb -O {tmpdir}/trace-decoder.deb"
+            )
+            shell_command(f"sudo dpkg -i {tmpdir}/trace-decoder.deb")
+
     shell_command(
         f"/opt/rocm/bin/rocprofv3 --att -d {output_dir} --att-target-cu=1 --att-shader-engine-mask=0x1 -- {command}"
     )
@@ -82,5 +91,5 @@ if __name__ == "__main__":
     # get_logs(COMMAND, OUTPUT_LOG)
     kernel_name = get_kernel_name(OUTPUT_LOG)
     # get_disassembly(COMMAND, kernel_name, WORKING_DIR / "disasm.txt")
-    # get_rocprofv3_trace(COMMAND, WORKING_DIR / "rocprof")
-    run_gdb(COMMAND, kernel_name)
+    get_rocprofv3_trace(COMMAND, WORKING_DIR / "rocprof")
+    # run_gdb(COMMAND, kernel_name)
