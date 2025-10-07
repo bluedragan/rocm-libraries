@@ -4,8 +4,6 @@
             "name": "Linux",
             "includePath": [
                 "${default}",
-                "/opt/rocm/lib/llvm/include/",
-                "/opt/rocm/include",
                 "${workspaceFolder}/shared/rocroller/lib/include",
                 "${workspaceFolder}/shared/rocroller/GPUArchitectureGenerator/include",
                 "${workspaceFolder}/shared/rocroller/test/common",
@@ -16,7 +14,9 @@
                 "${workspaceFolder}/shared/rocroller/build/_deps/catch2-build/generated-includes",
                 "${workspaceFolder}/shared/rocroller/build/_deps/cli11-src/include",
                 "${workspaceFolder}/shared/rocroller/build/_deps/yaml_cpp-src/include",
-                "${workspaceFolder}/shared/rocroller/build/_deps/fmt-src/include"
+                "${workspaceFolder}/shared/rocroller/build/_deps/fmt-src/include",
+                "/opt/rocm/lib/llvm/include/",
+                "/opt/rocm/include"
             ],
             "compilerPath": "/opt/rocm/bin/amdclang++",
             "intelliSenseMode": "linux-clang-x64",
