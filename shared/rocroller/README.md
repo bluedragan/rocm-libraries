@@ -1,5 +1,5 @@
 # To Use:
 
 ```bash
-git restore --source  users/kerrwang/vscode .vscode/
+git restore --source  origin/users/kerrwang/vscode .vscode/
 ```
