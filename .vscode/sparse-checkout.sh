@@ -1,0 +1,9 @@
+#!/bin/bash
+
+git sparse-checkout init --cone
+
+git sparse-checkout set shared/rocroller\
+    shared/mxdatagenerator \
+    .vscode/
+
+git sparse-checkout reapply

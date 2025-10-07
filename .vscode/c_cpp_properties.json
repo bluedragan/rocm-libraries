@@ -1,0 +1,37 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${default}",
+                "/opt/rocm/lib/llvm/include/",
+                "/opt/rocm/include",
+                "${workspaceFolder}/shared/rocroller/lib/include",
+                "${workspaceFolder}/shared/rocroller/GPUArchitectureGenerator/include",
+                "${workspaceFolder}/shared/rocroller/test/common",
+                "${workspaceFolder}/shared/rocroller/test/common/include",
+                "${workspaceFolder}/shared/rocroller/build/_deps/googletest-src/googletest/include/*",
+                "${workspaceFolder}/shared/rocroller/build/_deps/googletest-src/googlemock/include/*",
+                "${workspaceFolder}/shared/rocroller/build/_deps/catch2-src/src",
+                "${workspaceFolder}/shared/rocroller/build/_deps/catch2-build/generated-includes",
+                "${workspaceFolder}/shared/rocroller/build/_deps/cli11-src/include",
+                "${workspaceFolder}/shared/rocroller/build/_deps/yaml_cpp-src/include",
+                "${workspaceFolder}/shared/rocroller/build/_deps/fmt-src/include"
+            ],
+            "compilerPath": "/opt/rocm/bin/amdclang++",
+            "intelliSenseMode": "linux-clang-x64",
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "defines": [
+                "MSGPACK_NO_BOOST",
+                "ROCROLLER_ENABLE_TIMERS",
+                "ROCROLLER_USE_HIP",
+                "__HIP_PLATFORM_AMD__",
+                "ROCROLLER_USE_YAML_CPP",
+                "ROCROLLER_TESTS_USE_YAML_CPP",
+                "ROCROLLER_PATH_PREFIX_LENGTH=15"
+            ]
+        }
+    ],
+    "version": 4
+}
