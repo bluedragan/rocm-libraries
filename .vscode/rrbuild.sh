@@ -1,6 +1,6 @@
 #!/bin/bash
 
-buildvar="${1:-build}"
+buildvar="shared/rocroller/${1:-build}"
 rm -rf "$buildvar"
 mkdir "$buildvar"
 cd "$buildvar"
