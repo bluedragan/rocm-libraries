@@ -1,7 +1,37 @@
 #!/bin/bash
 
-buildvar="shared/rocroller/${1:-build}"
-rm -rf "$buildvar"
+force=false
+build_dir=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -f|--force)
+            force=true
+            shift
+            ;;
+        *)
+            # First non-option argument is the build directory
+            if [[ -z "$build_dir" ]]; then
+                build_dir="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+buildvar="shared/rocroller/${build_dir:-build_release}"
+
+if [[ -d "$buildvar" ]]; then
+    if [[ "$force" == true ]]; then
+        echo "Removing $buildvar"
+        rm -rf "$buildvar"
+    else
+        echo "$buildvar exists, use -f option to force delete and remake."
+        cd "$buildvar"
+        exit 0
+    fi
+fi
+
 mkdir "$buildvar"
 cd "$buildvar"
 cmake --preset default:release -B . -S .. -GNinja -DCMAKE_BUILD_TYPE=Debug -DROCROLLER_ENABLE_TIMERS=ON
