@@ -57,8 +57,8 @@ def get_disassembly(command: str, working_dir: Path) -> Path:
     kernel_name = get_kernel_name(command, working_dir)
 
     gdb_script = f"""
-        set logging file {output_disasm}
         set pagination off
+        set logging file {output_disasm}
         set breakpoint pending on
         break {kernel_name}
         run
@@ -107,8 +107,8 @@ def run_gdb(command: str, working_dir: Path):
     kernel_name = get_kernel_name(command, working_dir)
 
     gdb_script = f"""
-        set breakpoint pending on
         set pagination off
+        set breakpoint pending on
         break {kernel_name}
         run
         del 1
