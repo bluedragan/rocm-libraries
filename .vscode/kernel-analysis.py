@@ -1,47 +1,64 @@
 #!/bin/python3
 
+import argparse
+import os
 from pathlib import Path
 import subprocess
 import re
 import itertools
 import tempfile
 
-COMMAND = """
-
-client/rocroller-gemm --mac_m=64 --mac_n=64 --mac_k=64 --wave_m=-1 --wave_n=-1 --wave_k=-1 --wave_b=-1 --workgroup_size_x=-1 --workgroup_size_y=-1 --workgroupRemapXCC=False --workgroupRemapXCCValue=-1 --unroll_x=0 --unroll_y=0 --loadLDS_A=True --loadLDS_B=True --storeLDS_D=True --betaInFma=True --direct2LDS_A=False --direct2LDS_B=False --scheduler=Priority --schedulerCost=LinearWeighted --prefetch=True --prefetchInFlight=2 --prefetchLDSFactor=0 --prefetchMixMemOps=False --loadLDSScale_A=False --loadLDSScale_B=False --swizzleScale=False --prefetchScale=False --streamK=False --numWGs=0 --streamKTwoTile=False --streamKTwoTileDPFirst=False --matchMemoryAccess=True --M=3072 --N=4096 --K=4096 --alpha=2.0 --beta=0.5 --type_A=float --type_B=float --type_C=float --type_D=float --type_acc=float --trans_A=N --trans_B=N --scale_A=None --scaleType_A=None --scale_B=None --scaleType_B=None --scaleBlockSize=-1 --scaleSkipPermlane=False --scaleValue_A=1.0 --scaleValue_B=1.0 --workgroupMappingDim=-1 --workgroupMappingValue=-1 --num_warmup=1 --num_outer=1 --num_inner=10 --noCheck=False --visualize=False
-
-""".strip()
-
-WORKING_DIR = Path("./kernel-analysis")
-OUTPUT_LOG = WORKING_DIR / "output.log"
-
 
 def shell_command(command: str, input: str = None) -> str:
-    print(f"Running command: {command}")
-    return subprocess.check_output(command, shell=True, text=True, input=input)
+    print(f"\n$ {command}\n")
+    subprocess.run(command, shell=True, check=True, text=True, input=input)
 
 
 def setup_directory(dir: Path):
     dir.mkdir(parents=True, exist_ok=True)
 
 
-def get_logs(command: str, output_log: Path):
+def get_logs(command: str, working_dir: Path) -> Path:
+    output_log = working_dir / "output.log"
+    assembly_file = working_dir / "assembly.s"
+
+    if output_log.exists():
+        print(f"Logs already exist at {output_log}, skipping...")
+        return output_log
+
+    setup_directory(working_dir)
+    os.environ["ROCROLLER_SAVE_ASSEMBLY"] = "1"
+    os.environ["ROCROLLER_ASSEMBLY_FILE"] = str(assembly_file)
     shell_command(f"{command} | tee {output_log}")
+    print(f"Logs saved to {output_log}, assembly saved to {assembly_file}")
+    return output_log
 
 
-def get_kernel_name(output_log: Path) -> str:
+def get_kernel_name(command: str, working_dir: Path) -> str:
+    output_log = get_logs(command, working_dir)
+
     with open(output_log, "r") as f:
         regex = r"Generating: (.*)..."
         for line in f:
             match = re.search(regex, line)
             if match:
-                return match.group(1)
+                kernel_name = match.group(1)
+                return kernel_name
     raise ValueError("Kernel name not found in log")
 
 
-def get_disassembly(command: str, kernel_name: str, output_disasm: Path):
+def get_disassembly(command: str, working_dir: Path) -> Path:
+    output_disasm = working_dir / "disasm.txt"
+
+    if output_disasm.exists():
+        print(f"Disassembly already exists at {output_disasm}, skipping...")
+        return output_disasm
+
+    kernel_name = get_kernel_name(command, working_dir)
+
     gdb_script = f"""
         set logging file {output_disasm}
+        set pagination off
         set breakpoint pending on
         break {kernel_name}
         run
@@ -51,9 +68,18 @@ def get_disassembly(command: str, kernel_name: str, output_disasm: Path):
         quit
     """
     shell_command(f"rocgdb --args {command}", input=gdb_script)
+    print(f"Disassembly saved to {output_disasm}")
 
 
-def get_rocprofv3_trace(command: str, output_dir: Path):
+def get_rocprofv3_trace(command: str, working_dir: Path) -> Path:
+    output_dir = working_dir / "rocprof"
+
+    if output_dir.exists():
+        print(f"Rocprof trace already exists at {output_dir}, skipping...")
+        return output_dir
+
+    setup_directory(working_dir)
+
     # Install rocprof-trace-decoder if not exists
     if not Path("/opt/rocm-7.1.0/lib/librocprof-trace-decoder.so").exists():
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -62,12 +88,24 @@ def get_rocprofv3_trace(command: str, output_dir: Path):
             )
             shell_command(f"sudo dpkg -i {tmpdir}/trace-decoder.deb")
 
-    shell_command(
-        f"/opt/rocm/bin/rocprofv3 --att -d {output_dir} --att-target-cu=1 --att-shader-engine-mask=0x1 -- {command}"
-    )
+    rocprofv3 = f"""
+    /opt/rocm/bin/rocprofv3 \
+        -d {output_dir} \
+        --att \
+        --att-target-cu=1 \
+        --att-shader-engine-mask=0x1 \
+        --att-perfcounter-ctrl=1 \
+        --att-perfcounters=SQ_LDS_BANK_CONFLICT,SQ_LDS_IDX_ACTIVE,SQ_INST_LEVEL_LDS,SQ_ACCUM_PREV_HIRES \
+    """
+
+    shell_command(f"{rocprofv3} -- {command}")
+    print(f"rocprofv3 trace saved to {output_dir}")
 
 
-def run_gdb(command: str, kernel_name: str):
+def run_gdb(command: str, working_dir: Path):
+    """Launch interactive GDB session. Calls get_kernel_name if needed."""
+    kernel_name = get_kernel_name(command, working_dir)
+
     gdb_script = f"""
         set breakpoint pending on
         set pagination off
@@ -76,20 +114,55 @@ def run_gdb(command: str, kernel_name: str):
         del 1
         set pagination on
     """.splitlines()
+
     ex_list = list(
         itertools.chain.from_iterable(
             [["-ex", line.strip()] for line in gdb_script if line.strip()]
         )
     )
     full = ["rocgdb", *ex_list, "--args", *command.split()]
-    print(" ".join(full))
     subprocess.call(full)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Kernel analysis for executables",
+    )
+
+    parser.add_argument(
+        "working_dir", type=Path, help="Working directory for analysis output"
+    )
+
+    parser.add_argument(
+        "-d", "--disasm", action="store_true", help="Generate disassembly"
+    )
+
+    parser.add_argument(
+        "-g", "--gdb", action="store_true", help="Launch interactive GDB session"
+    )
+
+    parser.add_argument(
+        "-r", "--rocprof", action="store_true", help="Run rocprofv3 trace analysis"
+    )
+
+    args, extra = parser.parse_known_args()
+    args.command = " ".join(extra)
+
+    return args
+
+
+def main():
+    args = parse_args()
+
+    if args.disasm:
+        get_disassembly(args.command, args.working_dir)
+
+    if args.rocprof:
+        get_rocprofv3_trace(args.command, args.working_dir)
+
+    if args.gdb:
+        run_gdb(args.command, args.working_dir)
+
+
 if __name__ == "__main__":
-    # setup_directory(WORKING_DIR)
-    # get_logs(COMMAND, OUTPUT_LOG)
-    kernel_name = get_kernel_name(OUTPUT_LOG)
-    # get_disassembly(COMMAND, kernel_name, WORKING_DIR / "disasm.txt")
-    get_rocprofv3_trace(COMMAND, WORKING_DIR / "rocprof")
-    # run_gdb(COMMAND, kernel_name)
+    main()
