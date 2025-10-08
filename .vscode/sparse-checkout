@@ -1,8 +1,10 @@
 #!/bin/bash
 
+cd $(git rev-parse --show-toplevel)
+
 git sparse-checkout init --cone
 
-git sparse-checkout set\
+git sparse-checkout set \
     shared/rocroller \
     shared/mxdatagenerator \
     .vscode
