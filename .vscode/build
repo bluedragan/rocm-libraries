@@ -19,7 +19,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-buildvar="shared/rocroller/${build_dir:-build_release}"
+buildvar="shared/rocroller/${build_dir:-build}"
 
 if [[ -d "$buildvar" ]]; then
     if [[ "$force" == true ]]; then
