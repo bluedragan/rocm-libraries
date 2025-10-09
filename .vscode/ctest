@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cd $1
+ctest -j 8 --schedule-random --output-on-failure --progress
