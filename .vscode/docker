@@ -1,0 +1,3 @@
+#!/bin/bash
+
+./docker/user-image/start_user_container --delete_existing_container --privileged --volumes ~/:/home/kerrwang  --versions clang --amdgpu-url=https://artifactory-cdn.amd.com/artifactory/list/amdgpu-deb/amdgpu-install-internal_7.1-22.04-1_all.deb --amdgpu-build-number=2223558 --amdgpu-build-uri=compute-rocm-dkms-npi-hipclang/10540
