@@ -1,8 +1,10 @@
 #!/bin/python3
 
 import argparse
+import glob
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import re
 import itertools
@@ -88,17 +90,35 @@ def get_rocprofv3_trace(command: str, working_dir: Path) -> Path:
             )
             shell_command(f"sudo dpkg -i {tmpdir}/trace-decoder.deb")
 
-    rocprofv3 = f"""
-    /opt/rocm/bin/rocprofv3 \
-        -d {output_dir} \
-        --att \
-        --att-target-cu=1 \
-        --att-shader-engine-mask=0x1 \
-        --att-perfcounter-ctrl=1 \
-        --att-perfcounters=SQ_LDS_BANK_CONFLICT,SQ_LDS_IDX_ACTIVE,SQ_INST_LEVEL_LDS,SQ_ACCUM_PREV_HIRES \
-    """
+    rocprofv3 = f"""/opt/rocm/bin/rocprofv3 \
+-d {output_dir} \
+--att \
+--att-target-cu=1 \
+--att-shader-engine-mask=0xFFFFFFFF \
+--att-perfcounter-ctrl=1 \
+--att-perfcounters=SQ_LDS_BANK_CONFLICT,SQ_LDS_IDX_ACTIVE,SQ_INST_LEVEL_LDS,SQ_ACCUM_PREV_HIRES"""
 
-    shell_command(f"{rocprofv3} -- {command}")
+    command = f"{rocprofv3} -- {command}"
+    dispatch_index = 2
+
+    while True:
+        shell_command(f"{rocprofv3} -- {command}")
+
+        csv_files = glob.glob(
+            f"{output_dir}/stats_ui_output_agent_*_dispatch_{dispatch_index}.csv"
+        )
+        assert (
+            len(csv_files) == 1
+        ), f"Expected one CSV file, found {len(csv_files)} for {dispatch_index=}"
+
+        with open(csv_files[0], "r") as f:
+            output = f.read()
+        print(output)
+        if len(output) > 77:  # More than just the header
+            break
+
+        shutil.rmtree(output_dir)
+
     print(f"rocprofv3 trace saved to {output_dir}")
 
 
@@ -130,7 +150,7 @@ def parse_args():
     )
 
     parser.add_argument(
-        "working_dir", type=Path, help="Working directory for analysis output"
+        "-w", "--working-dir", type=Path, help="Working directory for analysis output"
     )
 
     parser.add_argument(
@@ -146,7 +166,9 @@ def parse_args():
     )
 
     args, extra = parser.parse_known_args()
-    args.command = " ".join(extra)
+    args.command = " ".join(extra).split("--")[-1].strip()
+
+    print(f"Command: {args.command}")
 
     return args
 
