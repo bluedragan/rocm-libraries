@@ -13,7 +13,7 @@ set(matrix_transform_stamp "${CMAKE_CURRENT_SOURCE_DIR}/matrix_transform.stamp")
 add_custom_command(
     COMMAND ${CMAKE_CXX_COMPILER} -x hip "${CMAKE_CURRENT_SOURCE_DIR}/matrix_transform.cpp" --offload-arch="${archs}" -c --offload-device-only -Xoffload-linker --build-id=sha1 -O3 -o ${matrix_transform_output_library}
     COMMAND ${CMAKE_COMMAND} -E touch ${matrix_transform_stamp}
-    OUTPUT ${matrix_transform_output_library}
+    OUTPUT ${matrix_transform_output_library} ${matrix_transform_stamp}
     COMMENT "Building hipblasltTransform.hsaco"
 )
 
