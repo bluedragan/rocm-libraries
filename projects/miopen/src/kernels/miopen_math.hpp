@@ -86,6 +86,37 @@ __forceinline__ __device__ _Float16 tanh(_Float16 x)
     return __hdiv(numerator, denominator);
 }
 
+__forceinline__ __device__ __half exp(__half x) { return hexp(x); }
+__forceinline__ __device__ __half log(__half x) { return hlog(x); }
+__forceinline__ __device__ __half sqrt(__half x) { return hsqrt(x); }
+__forceinline__ __device__ __half rsqrt(__half x) { return hrsqrt(x); }
+__forceinline__ __device__ __half sin(__half x) { return hsin(x); }
+__forceinline__ __device__ __half cos(__half x) { return hcos(x); }
+__forceinline__ __device__ __half fabs(__half x) { return __habs(x); }
+__forceinline__ __device__ __half fmax(__half x, __half y)
+{
+    return fmax(static_cast<float>(x), static_cast<float>(y));
+}
+__forceinline__ __device__ __half fmin(__half x, __half y)
+{
+    return fmin(static_cast<float>(x), static_cast<float>(y));
+}
+
+__forceinline__ __device__ __half pow(__half x, __half y) { return hexp(__hmul(y, hlog(x))); }
+__forceinline__ __device__ __half tan(__half x)
+{
+    __half h = x;
+    return __hdiv(hsin(h), hcos(h));
+}
+__forceinline__ __device__ __half tanh(__half x)
+{
+    __half h           = x;
+    __half exp2x       = hexp(__hmul(__half(2.0f), h));
+    __half numerator   = __hsub(exp2x, __half(1.0f));
+    __half denominator = __hadd(exp2x, __half(1.0f));
+    return __hdiv(numerator, denominator);
+}
+
 //=============================================================================
 // BFloat16 overloads
 //=============================================================================
