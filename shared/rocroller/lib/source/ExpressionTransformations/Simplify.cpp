@@ -639,6 +639,35 @@ namespace rocRoller
                 return std::make_shared<Expression>(expr);
             }
 
+            ExpressionPtr operator()(Register::ValuePtr const& expr) const
+            {
+                if(expr->allocationState() == Register::AllocationState::NoAllocation
+                    || expr->registerCount() == 1)
+                    return std::make_shared<Expression>(expr);
+
+                auto     regSize     = Register::bitsPerRegister;
+                uint32_t regStartBit = 0;
+                uint32_t regEndBit   = regStartBit + regSize - 1;
+
+                uint32_t startBit = m_offset;
+                uint32_t endBit   = m_offset + m_width - 1;
+
+                for(size_t i = 0; i < expr->registerCount(); ++i)
+                {
+                    // BitFieldExtract is fully contained within this register
+                    if(startBit >= regStartBit && endBit <= regEndBit)
+                    {
+                        m_offset -= regStartBit;
+                        return std::make_shared<Expression>(expr->subset({i}));
+                    }
+
+                    regStartBit += regSize;
+                    regEndBit += regSize;
+                }
+
+                return std::make_shared<Expression>(expr);
+            }
+
             template <typename Expr>
             ExpressionPtr operator()(Expr const& expr) const
             {
