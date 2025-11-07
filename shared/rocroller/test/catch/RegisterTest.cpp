@@ -641,3 +641,195 @@ TEST_CASE("Register::RegisterId and Register::RegisterIdHash() work for special 
         CHECK(vccRegisterIDs[0] == specialRegisterIDs[0]);
     }
 }
+
+TEST_CASE("Register::tryMergeSubsets() works", "[codegen][register]")
+{
+    auto context = TestContext::ForDefaultTarget();
+
+    SECTION("Successful merge of 2 subsets (64-bit register)")
+    {
+        auto r64 = std::make_shared<Register::Value>(
+            context.get(), Register::Type::Vector, DataType::UInt64, 1);
+        r64->allocateNow();
+
+        auto reg64Low  = r64->subset({0});
+        auto reg64High = r64->subset({1});
+
+        auto merged = Register::tryMergeSubsets({reg64Low, reg64High});
+
+        REQUIRE(merged.has_value());
+        CHECK(merged.value()->sameAs(r64));
+        CHECK(merged.value()->registerCount() == 2);
+        CHECK(merged.value()->variableType() == DataType::UInt64);
+    }
+
+    SECTION("Successful merge of 4 subsets (128-bit buffer)")
+    {
+        VariableType vt{DataType::None, PointerType::Buffer};
+        auto r128 = std::make_shared<Register::Value>(context.get(), Register::Type::Scalar, vt, 1);
+        r128->allocateNow();
+
+        auto sub0 = r128->subset({0});
+        auto sub1 = r128->subset({1});
+        auto sub2 = r128->subset({2});
+        auto sub3 = r128->subset({3});
+
+        auto merged = Register::tryMergeSubsets({sub0, sub1, sub2, sub3});
+
+        REQUIRE(merged.has_value());
+        CHECK(merged.value()->sameAs(r128));
+        CHECK(merged.value()->registerCount() == 4);
+        CHECK(merged.value()->variableType() == vt);
+    }
+
+    SECTION("Successful merge with non-contiguous subsets")
+    {
+        VariableType vt{DataType::None, PointerType::Buffer};
+        auto r128 = std::make_shared<Register::Value>(
+            context.get(), Register::Type::Scalar, vt, 1);
+        r128->allocateNow();
+
+        auto sub_low = r128->subset({0, 1});
+        auto sub_high  = r128->subset({2, 3});
+
+        auto merged = Register::tryMergeSubsets({sub_low, sub_high});
+
+        REQUIRE(merged.has_value());
+        CHECK(merged.value()->registerCount() == 4);
+        CHECK(merged.value()->variableType() == vt);
+    }
+
+    SECTION("Failed merge with out-of-order non-contiguous subsets")
+    {
+        VariableType vt{DataType::None, PointerType::Buffer};
+        auto r128 = std::make_shared<Register::Value>(
+            context.get(), Register::Type::Scalar, vt, 1);
+        r128->allocateNow();
+
+        auto sub_even = r128->subset({0, 2});
+        auto sub_odd  = r128->subset({1, 3});
+
+        auto merged = Register::tryMergeSubsets({sub_even, sub_odd});
+
+        CHECK(!merged.has_value());
+    }
+
+    SECTION("Failed merge with subsets out of order")
+    {
+        auto r64 = std::make_shared<Register::Value>(
+            context.get(), Register::Type::Vector, DataType::UInt64, 1);
+        r64->allocateNow();
+
+        auto reg64Low  = r64->subset({0});
+        auto reg64High = r64->subset({1});
+
+        // Pass in reverse order
+        auto merged = Register::tryMergeSubsets({reg64High, reg64Low});
+
+        CHECK(!merged.has_value());
+    }
+
+    SECTION("Failed merge: overlapping subsets")
+    {
+        auto r64 = std::make_shared<Register::Value>(
+            context.get(), Register::Type::Vector, DataType::UInt64, 1);
+        r64->allocateNow();
+
+        auto sub0    = r64->subset({0});
+        auto sub_all = r64->subset({0, 1});
+
+        auto result = Register::tryMergeSubsets({sub0, sub_all});
+
+        CHECK(!result.has_value());
+    }
+
+    SECTION("Failed merge: incomplete coverage")
+    {
+        auto r64 = std::make_shared<Register::Value>(
+            context.get(), Register::Type::Vector, DataType::UInt64, 1);
+        r64->allocateNow();
+
+        auto sub0 = r64->subset({0});
+
+        auto result = Register::tryMergeSubsets({sub0});
+
+        CHECK(!result.has_value());
+    }
+
+    SECTION("Failed merge: different allocations")
+    {
+        auto r1 = std::make_shared<Register::Value>(
+            context.get(), Register::Type::Vector, DataType::UInt64, 1);
+        r1->allocateNow();
+
+        auto r2 = std::make_shared<Register::Value>(
+            context.get(), Register::Type::Vector, DataType::UInt64, 1);
+        r2->allocateNow();
+
+        auto sub1_0 = r1->subset({0});
+        auto sub2_1 = r2->subset({1});
+
+        auto result = Register::tryMergeSubsets({sub1_0, sub2_1});
+
+        CHECK(!result.has_value());
+    }
+
+    SECTION("Failed merge: different register types")
+    {
+        auto rScalar = std::make_shared<Register::Value>(
+            context.get(), Register::Type::Scalar, DataType::UInt64, 1);
+        rScalar->allocateNow();
+
+        auto rVector = std::make_shared<Register::Value>(
+            context.get(), Register::Type::Vector, DataType::UInt64, 1);
+        rVector->allocateNow();
+
+        // Even though they might have similar structure, different register types
+        // This test just verifies we check register type
+        auto sub_scalar = rScalar->subset({0});
+        auto sub_vector = rVector->subset({0});
+
+        auto result = Register::tryMergeSubsets({sub_scalar, sub_vector});
+
+        CHECK(!result.has_value());
+    }
+
+    SECTION("Failed merge: empty vector")
+    {
+        std::vector<Register::ValuePtr> empty;
+        auto                            result = Register::tryMergeSubsets(empty);
+
+        CHECK(!result.has_value());
+    }
+
+    SECTION("Successful merge with multiple multi-register subsets")
+    {
+        auto r = std::make_shared<Register::Value>(
+            context.get(), Register::Type::Scalar, DataType::UInt32, 8);
+        r->allocateNow();
+
+        auto sub1 = r->subset({0, 1});
+        auto sub2 = r->subset({2, 3, 4});
+        auto sub3 = r->subset({5, 6, 7});
+
+        auto merged = Register::tryMergeSubsets({sub1, sub2, sub3});
+
+        REQUIRE(merged.has_value());
+        CHECK(merged.value()->registerCount() == 8);
+        CHECK(merged.value()->sameAs(r));
+        CHECK(merged.value()->variableType() == DataType::UInt32);
+    }
+
+    SECTION("Initializer list overload works")
+    {
+        auto r64 = std::make_shared<Register::Value>(
+            context.get(), Register::Type::Vector, DataType::UInt64, 1);
+        r64->allocateNow();
+
+        // Test initializer list overload
+        auto merged = Register::tryMergeSubsets({r64->subset({0}), r64->subset({1})});
+
+        REQUIRE(merged.has_value());
+        CHECK(merged.value()->sameAs(r64));
+    }
+}

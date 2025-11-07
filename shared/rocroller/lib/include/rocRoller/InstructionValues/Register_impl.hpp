@@ -1246,6 +1246,11 @@ namespace rocRoller
             return m_registerCount;
         }
 
+        inline VariableType Allocation::variableType() const
+        {
+            return m_variableType;
+        }
+
         inline void Allocation::setRegisterCount()
         {
             m_registerCount
@@ -1305,6 +1310,50 @@ namespace rocRoller
         inline void Allocation::setName(std::string name)
         {
             m_name = std::move(name);
+        }
+
+        inline std::optional<ValuePtr> tryMergeSubsets(std::vector<ValuePtr> const& subsets)
+        {
+            if(subsets.empty())
+                return std::nullopt;
+
+            auto alloc   = subsets[0]->allocation();
+            auto regType = alloc->regType();
+            std::vector<int> allCoords;
+
+            for(auto const& subset : subsets)
+            {
+                if(subset->allocationState() == Register::AllocationState::NoAllocation)
+                    return {};
+
+                // Check all subsets match the allocation and register type
+                if(subset->allocation() != alloc || subset->regType() != regType || subset->variableType() != DataType::Raw32)
+                    return std::nullopt;
+
+                for(int coord : subset->allocationCoord())
+                    allCoords.push_back(coord);
+            }
+
+            if(allCoords.empty() || allCoords.size() != alloc->registerCount())
+                return std::nullopt;
+
+            // Check that orderedCoords contains a contiguous sequence from 0 .. N-1
+            int coordVal = allCoords[0];
+            for (int coord : allCoords)
+            {
+                if (coord != coordVal++)
+                    return std::nullopt;
+            }
+
+            VariableType varType = alloc->variableType();
+            return std::make_shared<Value>(
+                alloc, regType, varType, std::move(allCoords));
+        }
+
+        inline std::optional<ValuePtr>
+            tryMergeSubsets(std::initializer_list<ValuePtr> subsets)
+        {
+            return tryMergeSubsets(std::vector<ValuePtr>(subsets));
         }
     }
 

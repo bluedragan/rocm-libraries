@@ -433,6 +433,16 @@ namespace rocRoller
                 return {};
             }
 
+            ExpressionPtr operator()(Register::ValuePtr const& expr1,
+                                     Register::ValuePtr const& expr2) const
+            {
+                auto merge = Register::tryMergeSubsets({expr1, expr2});
+                if(merge.has_value())
+                    return merge.value()->expression();
+
+                return {};
+            }
+
             template <typename ARG1, typename ARG2>
             ExpressionPtr operator()(ARG1 const& expr1, ARG2 const& expr2) const
             {

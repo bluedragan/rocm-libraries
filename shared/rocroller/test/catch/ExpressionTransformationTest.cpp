@@ -1148,14 +1148,16 @@ TEST_CASE("splitBitFieldCombine works", "[expression][expression-transformation]
     SECTION("Combine into the first and second dwords of 128 bit dst, across src dword boundary")
     {
         auto expr = bfc(reg64, zero128, 16, 16, 32);
+        auto reg64Low = r2->subset({0})->expression();
+        auto reg64High = r2->subset({1})->expression();
 
         // zero128    0x 00000000 00000000 00000000 00000000
         // reg64      0x 0000XXXX XXXX0000
         // expr       0x 00000000 00000000 0000XXXX XXXX0000
 
         std::vector<Expression::ExpressionPtr> operands{
-            bfc(bfe(DataType::Raw32, reg64, 16, 16), zero32, 0, 16, 16),
-            bfc(bfe(DataType::Raw32, reg64, 32, 16), zero32, 0, 0, 16),
+            bfc(bfe(DataType::Raw32, reg64Low, 16, 16), zero32, 0, 16, 16),
+            bfc(bfe(DataType::Raw32, reg64High, 0, 16), zero32, 0, 0, 16),
             zero32,
             zero32};
         auto expected = concat(operands, {DataType::None, PointerType::Buffer});

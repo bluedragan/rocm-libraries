@@ -430,6 +430,13 @@ namespace rocRoller
         ValuePtr Representative(std::initializer_list<ValuePtr> values);
 
         /**
+         * Try to merge subsets back into the original allocation.
+         * Returns std::nullopt if the merge is not possible.
+         */
+        std::optional<ValuePtr> tryMergeSubsets(std::vector<ValuePtr> const& subsets);
+        std::optional<ValuePtr> tryMergeSubsets(std::initializer_list<ValuePtr> subsets);
+
+        /**
          * Represents one (possible) allocation of register(s) that are thought of collectively.
          *
          * TODO: Make not copyable, enforce construction through shared_ptr
@@ -461,6 +468,7 @@ namespace rocRoller
             std::string descriptiveComment(std::string const& prefix) const;
 
             int               registerCount() const;
+            VariableType      variableType() const;
             AllocationOptions options() const;
 
             std::vector<int> const& registerIndices() const;
