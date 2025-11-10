@@ -196,6 +196,27 @@ TEST_CASE("Simplify ExpressionTransformation works", "[expression][expression-tr
         expr  = bfe(DataType::Int32, v, 8, 16);
         expr2 = bfe(DataType::Int32, expr, 8, 16);
         CHECK_THAT(simplify(expr2), IdenticalTo(expr2));
+
+        expr = bfe(DataType::Raw32, v3, 0, 32);
+        CHECK_THAT(simplify(expr), IdenticalTo(r3->subset({0})->expression()));
+
+        expr = bfe(DataType::UInt64, v3, 0, 64);
+        CHECK_THAT(simplify(expr), IdenticalTo(v3));
+
+        auto r4 = Register::Value::Placeholder(
+            context.get(), Register::Type::Scalar, {DataType::None, rocRoller::PointerType::Buffer}, 1);
+        r4->allocateNow();
+        auto v4 = r4->expression();
+
+        expr = bfe(DataType::UInt64, v4, 0, 64);
+        auto expect = r4->subset({0, 1});
+        expect->setVariableType(DataType::UInt64);
+        CHECK_THAT(simplify(expr), IdenticalTo(expect->expression()));
+
+        expr = bfe(DataType::UInt32, v4, 32, 32);
+        expect = r4->subset({1});
+        expect->setVariableType(DataType::UInt32);
+        CHECK_THAT(simplify(expr), IdenticalTo(expect->expression()));
     }
 
     SECTION("bitFieldCombine")
@@ -224,6 +245,22 @@ TEST_CASE("Simplify ExpressionTransformation works", "[expression][expression-tr
             simplify(concat({bfe(DataType::Raw32, v3, 0, 32), bfe(DataType::Raw32, v3, 32, 32)},
                             {DataType::UInt64})),
             IdenticalTo(v3));
+    }
+
+    SECTION("convert")
+    {
+        // Two Raw32 registers
+        Register::ValuePtr r64_raw = r3->subset({0, 1});
+        auto               v64_raw = r64_raw->expression();
+        // One Raw32 register
+        Register::ValuePtr r32_single = r3->subset({0});
+        auto               v32_single = r32_single->expression();
+
+        CHECK_THAT(simplify(convert(DataType::UInt64, v64_raw)), IdenticalTo(v3));
+        CHECK_THAT(simplify(convert(DataType::Int32, v)), IdenticalTo(v));
+
+        auto converted_expr = convert(DataType::UInt64, v32_single);
+        CHECK_THAT(simplify(converted_expr), IdenticalTo(converted_expr));
     }
 }
 
@@ -1147,8 +1184,8 @@ TEST_CASE("splitBitFieldCombine works", "[expression][expression-transformation]
 
     SECTION("Combine into the first and second dwords of 128 bit dst, across src dword boundary")
     {
-        auto expr = bfc(reg64, zero128, 16, 16, 32);
-        auto reg64Low = r2->subset({0})->expression();
+        auto expr      = bfc(reg64, zero128, 16, 16, 32);
+        auto reg64Low  = r2->subset({0})->expression();
         auto reg64High = r2->subset({1})->expression();
 
         // zero128    0x 00000000 00000000 00000000 00000000

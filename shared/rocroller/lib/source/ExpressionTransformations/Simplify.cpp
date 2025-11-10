@@ -703,6 +703,40 @@ namespace rocRoller
         };
 
         /**
+         * Attempts to simplify a BitFieldExtract into a register subset operation.
+         * Returns the subset if the extraction is aligned to full register boundaries, nullopt otherwise.
+         */
+        std::optional<ExpressionPtr> bfeToSubset(BitFieldExtract const& expr)
+        {
+            auto const* reg = std::get_if<Register::ValuePtr>(expr.arg.get());
+            if(!reg || (*reg)->allocationState() != Register::AllocationState::Allocated
+               || (*reg)->registerCount() <= 1)
+                return std::nullopt;
+
+            // Check if extraction is aligned to register boundaries
+            if(expr.offset % Register::bitsPerRegister != 0
+               || expr.width % Register::bitsPerRegister != 0)
+                return std::nullopt;
+
+            uint registerOffset = expr.offset / Register::bitsPerRegister;
+            uint registerCount  = expr.width / Register::bitsPerRegister;
+
+            // Only returns if the register count matches the expected output data type
+            if (DataTypeInfo::Get(expr.outputDataType).registerCount != registerCount)
+                return std::nullopt;
+
+            // Check bounds
+            if(registerOffset + registerCount > (*reg)->registerCount())
+                return std::nullopt;
+
+            std::vector<int> indices(registerCount);
+            std::iota(indices.begin(), indices.end(), registerOffset);
+
+            auto subset = (*reg)->subset(indices);
+            return convert(expr.outputDataType, subset->expression());
+        }
+
+        /**
          * Returns a BitFieldExtract expression that extracts the specified bitfield from the given expression.
          * Looks through Concatenate expressions to find the corresponding operand to extract.
          * Looks through BitfieldCombine expressions to extract from its destination operand if the BitfieldCombine and BitFieldExtract do not overlap.
@@ -726,8 +760,19 @@ namespace rocRoller
                 {
                     if(expr.arg)
                     {
-                        if(resultVariableType(expr) == resultVariableType(expr.arg))
+                        auto resultVarType = resultVariableType(expr);
+                        auto argVarType    = resultVariableType(expr.arg);
+                        if(resultVarType == argVarType)
                             return call(expr.arg);
+
+                        // If converting from a Raw32 register, and the register count matches, skip conversion
+                        auto const* reg = std::get_if<Register::ValuePtr>(expr.arg.get());
+                        if (reg && argVarType == DataType::Raw32 &&
+                            (*reg)->registerCount() == DataTypeInfo::Get(resultVarType).registerCount)
+                        {
+                            (*reg)->setVariableType(resultVarType);
+                            return (*reg)->expression();
+                        }
                     }
                 }
 
@@ -821,6 +866,9 @@ namespace rocRoller
                 if(cpy.offset == 0 && cpy.width == resultVariableType(cpy.arg).getElementSize() * 8)
                     return call(convert(cpy.outputDataType, cpy.arg));
 
+                // If extracting full registers, we can just return them as a subset
+                if(auto subset = bfeToSubset(cpy))
+                    return call(subset.value());
 
                 cpy.arg = call(cpy.arg);
                 return std::make_shared<Expression>(cpy);
