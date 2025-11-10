@@ -239,12 +239,16 @@ namespace rocRoller
             std::ostringstream msg;
             msg << BaseDimension::toString() << "(" << rank << "/" << memoryType << "/"
                 << layoutType << ")"
-                << "{";
+                << "sizes{";
 
             streamJoin(msg, sizes, ",");
 
-            msg << "}-(";
+            msg << "}-subTileSizes(";
             streamJoin(msg, subTileSizes, ",");
+            msg << ")-miTileSizes(";
+            streamJoin(msg, miTileSizes, ",");
+            msg << ")-swizzleTileSizes(";
+            streamJoin(msg, swizzleTileSizes, ",");
             msg << ")";
 
             return msg.str();
@@ -364,6 +368,21 @@ namespace rocRoller
             size   = Expression::literal(product(sizes));
             stride = Expression::literal(1u);
             layout = macTile.layoutType;
+        }
+
+        std::string WaveTile::toString() const
+        {
+            std::ostringstream msg;
+            msg << BaseDimension::toString() << "(" << rank << "/" << layout << ")"
+                << "sizes{";
+
+            streamJoin(msg, sizes, ",");
+
+            msg << "}-wsizes(";
+            streamJoin(msg, wsizes, ",");
+            msg << ")";
+
+            return msg.str();
         }
 
         WaveTileNumber WaveTile::tileNumber(int sdim) const

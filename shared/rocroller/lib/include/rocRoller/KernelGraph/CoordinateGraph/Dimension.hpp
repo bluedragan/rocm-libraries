@@ -532,6 +532,8 @@ namespace rocRoller
              */
             explicit WaveTile(MacroTile const&);
 
+            std::string toString() const override;
+
             std::string name() const override;
 
             /**
