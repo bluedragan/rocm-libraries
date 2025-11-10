@@ -83,7 +83,7 @@ namespace rocRoller
                                                 graph.control.depthFirstVisit(root.value())))
             {
                 auto exchangeTag = getExchangeForMultiply(graph, multiplyTag, arg);
-                if(!exchangeTag.has_value())
+                if(not exchangeTag)
                     continue;
                 Log::debug("Adding exchange-before-multiply Sequence edge from {} to {} for {}",
                            exchangeTag.value(),
@@ -122,7 +122,7 @@ namespace rocRoller
 
             std::vector<DeferredConnection> connections;
 
-            auto waveTile = graph.coordinates.get<WaveTile>(waveTileTag).value();
+            auto waveTile = graph.coordinates.getNode<WaveTile>(waveTileTag);
             auto iWaveX   = graph.coordinates.addElement(waveTile.tileIndex(0));
             auto iWaveY   = graph.coordinates.addElement(waveTile.tileIndex(1));
 
@@ -200,8 +200,7 @@ namespace rocRoller
             auto macTileTag = graph.coordinates.addElement(macTile);
             connections.push_back(DC<MacroTile>(macTileTag));
 
-            auto iMac0 = graph.coordinates.addElement(macTile.tileIndex(0));
-            auto iMac1 = graph.coordinates.addElement(macTile.tileIndex(1));
+            int iMac0, iMac1;
 
             auto isLoadTiled = graph.control.get<LoadTiled>(tag).has_value();
             if(isLoadTiled)
@@ -225,23 +224,9 @@ namespace rocRoller
                 }
                 graph.coordinates.addElement(Split(), std::vector<int>{user}, sDims);
 
-                auto numTiles0 = tileCeilDivide(graph.coordinates.get<SubDimension>(sDims[0])->size,
-                                                macTile.sizes[0]);
-
-                auto numTiles1 = tileCeilDivide(graph.coordinates.get<SubDimension>(sDims[1])->size,
-                                                macTile.sizes[1]);
-
-                connections.push_back(DC<SubDimension>(sDims[0], 0));
-                connections.push_back(DC<SubDimension>(sDims[1], 1));
-
-                auto nMac0 = graph.coordinates.addElement(macTile.tileNumber(0, numTiles0));
-                auto nMac1 = graph.coordinates.addElement(macTile.tileNumber(1, numTiles1));
-
-                connections.push_back(DC<MacroTileNumber>(nMac0, 0));
-                connections.push_back(DC<MacroTileNumber>(nMac1, 1));
-
-                graph.coordinates.addElement(Tile(), {sDims[0]}, {nMac0, iMac0});
-                graph.coordinates.addElement(Tile(), {sDims[1]}, {nMac1, iMac1});
+                int nMac0, nMac1;
+                std::tie(nMac0, iMac0, nMac1, iMac1)
+                    = addLoadMacroTileCT(graph, connections, macTileTag, sDims);
 
                 auto existingMacTileNum0 = graph.mapper.get<MacroTileNumber>(tag, 0);
                 AssertFatal(existingMacTileNum0 != -1,
@@ -273,6 +258,9 @@ namespace rocRoller
             auto isLoadLDSTile = graph.control.get<LoadLDSTile>(tag).has_value();
             if(isLoadLDSTile)
             {
+                iMac0 = graph.coordinates.addElement(macTile.tileIndex(0));
+                iMac1 = graph.coordinates.addElement(macTile.tileIndex(1));
+
                 auto ldsTag = graph.mapper.get<LDS>(tag);
                 AssertFatal(ldsTag != -1, "LDS coordinate associated with LoadLDSTile not found");
 
