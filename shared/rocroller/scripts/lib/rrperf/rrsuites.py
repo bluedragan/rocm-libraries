@@ -1155,11 +1155,19 @@ def fp4_target_d2lds_mi32x32x64_pf4x1():
             scaleBlockSize=32,
         ),
         swizzleTileSize=MKNLTuple(64, 64 // 32 * 2 * 4, 64, 64 // 32 * 2 * 4),
-        pretileScale=True,
+        pretileScale=False,
         numOuter=1,
         numWarmUp=1000,
         numInner=1000,
     )
+
+
+def fp4_target_d2lds_mi32x32x64_pf4x1_pretile():
+    for gemm in fp4_target_d2lds_mi32x32x64_pf4x1():
+        gemm.pretileScale = True
+        gemm.types.scaleSkipPermlane = True
+        gemm.swizzleTileSize = MKNLTuple(64, 4, 64, 4)
+        yield gemm
 
 
 def fp4_target_d2lds_mi32x32x64_pf4x1_wgm():
