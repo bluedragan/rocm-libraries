@@ -561,22 +561,25 @@ namespace MemoryInstructionsTest
                 }
                 else
                 {
-                    BufferDescriptorExpr bufDescExpr(m_context);
-                    bufDescExpr.setBasePointer(s_a->expression());
-                    bufDescExpr.setSize(Expression::literal(N));
-                    co_yield bufDescExpr.generate();
+                    Expression::ExpressionPtr bufferExpr = Expression::literal(Buffer{0, 0, 0, 0});
+                    bufferExpr = buffDescriptor::setDefaults(bufferExpr, m_context);
+                    bufferExpr = buffDescriptor::setBasePointer(bufferExpr, s_a->expression());
+                    bufferExpr = buffDescriptor::setSize(bufferExpr, Expression::literal(N));
 
-                    bufDesc = std::make_shared<rocRoller::BufferDescriptor>(bufDescExpr.m_bufferDescriptor, m_context);
+                    auto bufferDescriptor = Register::Value::Placeholder(
+                        m_context, Register::Type::Scalar, {DataType::None, PointerType::Buffer}, 1);
                     auto bufInstOpts = rocRoller::BufferInstructionOptions();
 
+                    co_yield Expression::generate(bufferDescriptor, bufferExpr, m_context);
+
+                    bufDesc = std::make_shared<rocRoller::BufferDescriptor>(bufferDescriptor, m_context);
                     co_yield m_context->mem()->loadBuffer(
                         v_a, vgprSerial, 0, bufDesc, bufInstOpts, N);
 
-                    bufDescExpr.setBasePointer(s_result->expression());
-                    co_yield bufDescExpr.generate();
+                    bufferExpr = buffDescriptor::setBasePointer(bufferDescriptor->expression(), s_result->expression());
+                    co_yield Expression::generate(bufferDescriptor, bufferExpr, m_context);
 
-                    bufDesc = std::make_shared<rocRoller::BufferDescriptor>(bufDescExpr.m_bufferDescriptor, m_context);
-
+                    bufDesc = std::make_shared<rocRoller::BufferDescriptor>(bufferDescriptor, m_context);
                     co_yield m_context->mem()->storeBuffer(
                         v_a, vgprSerial, 0, bufDesc, bufInstOpts, N);
                 }

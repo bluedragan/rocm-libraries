@@ -38,6 +38,18 @@
 
 namespace rocRoller
 {
+    namespace buffDescriptor {
+
+        using namespace Expression;
+
+        ExpressionPtr setDefaults(ExpressionPtr bufferExpr, ContextPtr ctx);
+        ExpressionPtr getDefaultOptions(ContextPtr ctx);
+        ExpressionPtr setBasePointer(ExpressionPtr bufferExpr, ExpressionPtr ptrExpr);
+        ExpressionPtr incrementBasePointer(ExpressionPtr bufferExpr, ExpressionPtr offsetExpr);
+        ExpressionPtr setSize(ExpressionPtr bufferExpr, ExpressionPtr sizeExpr);
+        ExpressionPtr setOptions(ExpressionPtr bufferExpr, ExpressionPtr optsExpr);
+    }
+
     class BufferDescriptor
     {
     public:
@@ -58,28 +70,5 @@ namespace rocRoller
     private:
         Register::ValuePtr m_bufferResourceDescriptor;
         ContextPtr         m_context;
-    };
-
-    class BufferDescriptorExpr
-    {
-    public:
-        BufferDescriptorExpr(ContextPtr context);
-        BufferDescriptorExpr(Register::ValuePtr regs, ContextPtr context);
-
-        void                   setBasePointer(Expression::ExpressionPtr expr);
-        void                   incrementBasePointer(Expression::ExpressionPtr expr);
-        void                   setSize(Expression::ExpressionPtr expr);
-        void                   setOptions(Expression::ExpressionPtr expr);
-
-        Generator<Instruction> generate();
-        Register::ValuePtr     getRegisters() const;
-
-        Expression::ExpressionPtr getDefaultSize(ContextPtr ctx);
-        Expression::ExpressionPtr getDefaultOptions(ContextPtr ctx);
-
-    public:
-        Expression::ExpressionPtr m_bufferExpr;
-        Register::ValuePtr        m_bufferDescriptor;
-        ContextPtr                m_context;
     };
 }

@@ -118,79 +118,74 @@ namespace rocRoller
         return m_bufferResourceDescriptor->subset({3});
     }
 
-    BufferDescriptorExpr::BufferDescriptorExpr(ContextPtr context)
-        : m_context(context)
+    namespace buffDescriptor
     {
-        m_bufferDescriptor = Register::Value::Placeholder(
-            m_context, Register::Type::Scalar, {DataType::None, PointerType::Buffer}, 1);
-
-        m_bufferExpr = Expression::literal(Buffer{0, 0, 0, 0});
-        this->setSize(Expression::literal(2147483548));
-        this->setOptions(getDefaultOptions(context));
-    }
-
-    BufferDescriptorExpr::BufferDescriptorExpr(Register::ValuePtr regs, ContextPtr context)
-        : m_context(context)
-        , m_bufferDescriptor(regs)
-        , m_bufferExpr(regs->expression())
-    {
-        AssertFatal(m_bufferDescriptor->regType() == Register::Type::Scalar,
-                    "Buffer descriptor must be a scalar register.");
-        AssertFatal(m_bufferDescriptor->variableType().pointerType == PointerType::Buffer,
-                    "Buffer descriptor must be a buffer pointer type.");
-        AssertFatal(m_bufferDescriptor->valueCount() == 1,
-                    "Buffer descriptor must be a single value.");
-        AssertFatal(m_bufferDescriptor->registerCount() == 4,
-                    "Buffer descriptor must be 4 registers long.");
-    }
-
-    void BufferDescriptorExpr::setBasePointer(Expression::ExpressionPtr expr)
-    {
-        m_bufferExpr = bfc(expr, m_bufferExpr, 0, 0, 64);
-    }
-
-    void BufferDescriptorExpr::incrementBasePointer(Expression::ExpressionPtr expr)
-    {
-        auto basePointer = bfe(DataType::UInt64, m_bufferExpr, 0, 64);
-        m_bufferExpr = bfc(basePointer + expr, m_bufferExpr, 0, 0, 64);
-    }
-
-    void BufferDescriptorExpr::setSize(Expression::ExpressionPtr expr)
-    {
-        m_bufferExpr = bfc(expr, m_bufferExpr, 0, 64, 32);
-    }
-
-    void BufferDescriptorExpr::setOptions(Expression::ExpressionPtr expr)
-    {
-        m_bufferExpr = bfc(expr, m_bufferExpr, 0, 96, 32);
-    }
-
-    Expression::ExpressionPtr BufferDescriptorExpr::getDefaultOptions(ContextPtr ctx)
-    {
-        if(ctx->targetArchitecture().HasCapability(GPUCapability::HasBufferOutOfBoundsCheckOption))
+        ExpressionPtr getDefaultOptions(ContextPtr ctx)
         {
-            // Bits 29:28 are for Out-of-Bounds check.
-            //   0 - index >= NumRecords || offset + payload > stride, used for structured buffers.
-            //   1 - index >= NumRecords, used for raw buffers (RR default)
-            //   2 - NumRecords == 0, empty buffers
-            //
-            // Bits 17:12 are for data format.
-            //   5 - 8_UINT. Currently, everything is buffer-loaded in terms of bytes.
-            // TODO: Add GFX12 buffer descriptor when other formats and/or features are needed.
-            return Expression::literal((1u << 28) | (5u << 12));
+            AssertFatal(ctx, "Context cannot be null.");
+
+            if(ctx->targetArchitecture().HasCapability(GPUCapability::HasBufferOutOfBoundsCheckOption))
+            {
+                // Bits 29:28 are for Out-of-Bounds check.
+                //   0 - index >= NumRecords || offset + payload > stride, used for structured buffers.
+                //   1 - index >= NumRecords, used for raw buffers (RR default)
+                //   2 - NumRecords == 0, empty buffers
+                //
+                // Bits 17:12 are for data format.
+                //   5 - 8_UINT. Currently, everything is buffer-loaded in terms of bytes.
+                // TODO: Add GFX12 buffer descriptor when other formats and/or features are needed.
+                return literal((1u << 28) | (5u << 12));
+            }
+            // 0x00020000
+            return literal((4u << 15));
         }
-        // 0x00020000
-        return Expression::literal((4u << 15));
-    }
 
-    Generator<Instruction> BufferDescriptorExpr::generate()
-    {
-        co_yield Expression::generate(m_bufferDescriptor, m_bufferExpr, m_context);
-        m_bufferExpr = m_bufferDescriptor->expression();
-    }
+        ExpressionPtr setDefaults(ExpressionPtr bufferExpr, ContextPtr ctx)
+        {
+            AssertFatal(bufferExpr && ctx, "Buffer and context cannot be null.");
+            AssertFatal(resultVariableType(bufferExpr).pointerType == PointerType::Buffer,
+                        "Buffer expression must be of buffer pointer type.");
 
-    Register::ValuePtr BufferDescriptorExpr::getRegisters() const
-    {
-        return m_bufferDescriptor;
+            bufferExpr = buffDescriptor::setSize(bufferExpr, literal(2147483548));
+            bufferExpr = buffDescriptor::setOptions(bufferExpr, getDefaultOptions(ctx));
+            return bufferExpr;
+        }
+
+        ExpressionPtr setBasePointer(ExpressionPtr bufferExpr, ExpressionPtr ptrExpr)
+        {
+            AssertFatal(bufferExpr && ptrExpr, "Buffer and ptr expressions cannot be null.");
+            AssertFatal(resultVariableType(bufferExpr).pointerType == PointerType::Buffer,
+                        "Buffer expression must be of buffer pointer type.");
+
+            return bfc(ptrExpr, bufferExpr, 0, 0, 64);
+        }
+
+        ExpressionPtr incrementBasePointer(ExpressionPtr bufferExpr, ExpressionPtr valueExpr)
+        {
+            AssertFatal(bufferExpr && valueExpr, "Buffer and value expressions cannot be null.");
+            AssertFatal(resultVariableType(bufferExpr).pointerType == PointerType::Buffer,
+                        "Buffer expression must be of buffer pointer type.");
+
+            auto basePointer = bfe(DataType::UInt64, bufferExpr, 0, 64);
+            return bfc(basePointer + valueExpr, bufferExpr, 0, 0, 64);
+        }
+
+        ExpressionPtr setSize(ExpressionPtr bufferExpr, ExpressionPtr sizeExpr)
+        {
+            AssertFatal(bufferExpr && sizeExpr, "Buffer and size expressions cannot be null.");
+            AssertFatal(resultVariableType(bufferExpr).pointerType == PointerType::Buffer,
+                        "Buffer expression must be of buffer pointer type.");
+
+            return bfc(sizeExpr, bufferExpr, 0, 64, 32);
+        }
+
+        ExpressionPtr setOptions(ExpressionPtr bufferExpr, ExpressionPtr optsExpr)
+        {
+            AssertFatal(bufferExpr && optsExpr, "Buffer and options expressions cannot be null.");
+            AssertFatal(resultVariableType(bufferExpr).pointerType == PointerType::Buffer,
+                        "Buffer expression must be of buffer pointer type.");
+
+            return bfc(optsExpr, bufferExpr, 0, 96, 32);
+        }
     }
 }
