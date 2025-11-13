@@ -540,7 +540,55 @@ def _get_schedule_256x192x64_16bit(kernel, useLDSTr, TLDS):
     optSchedule = dict()
     syncCode = []
     nglshift = nllshift = 0 # vmcnt shift for ngl and nll
-    if isTN(kernel) and not useLDSTr and TLDS == 1:
+    if isNN(kernel) and useLDSTr and TLDS==1:
+        n_code_paths = 2
+        syncTable = [
+            22, SWaitCnt(dscnt=8+3, vlcnt=-1, vscnt=-1, comment="Wait for first 8 of LRA0"),
+            22, SBarrier(comment=""),
+
+            47, SWaitCnt(dscnt=3, vlcnt=-1, vscnt=-1, comment="Wait for rest of LRA0 and half of LRB0"),
+
+            63, SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="Wait for rest of LRB0"),
+            63, SWaitCnt(dscnt=-1, vlcnt=14, vscnt=-1, comment="Wait for part of previous GRA"),
+            63, SBarrier(comment=""),
+
+            80, SWaitCnt(dscnt=-1, vlcnt=12+2, vscnt=-1, comment="Wait for most of previous GRB"),
+            80, SBarrier(comment=""),
+
+            92, SWaitCnt(dscnt=-1, vlcnt=14, vscnt=-1, comment="Wait for previous GRB"),
+            92, SBarrier(comment=""),
+
+            95, SWaitCnt(dscnt=3, vlcnt=-1, vscnt=-1, comment="Wait for most of PLR (good till i>24)"),
+        ]
+        optSchedule = {
+            'SYNC'   : [syncTable[::2]],
+            'GRIncA' : [[0,1,2,     3,4,5,      6,7,8]],
+            'GRIncB' : [[9,10,11,  12,13,14,   15,16,17]],                
+            'LRA0'   : [[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+                        [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]],
+            'LRB0'   : [[18,19,20,  23,24,25],
+                        [19,20,21,  24,25,26]],
+            
+            'GRA'    : [[24,24, 25,25, 26,26, 27,27,    48,48, 49,49, 50,50, 51,51],
+                        [25,25, 26,26, 27,27, 28,28,    49,49, 50,50, 51,51, 52,52]],
+            'GRB'    : [[64,64, 65,65, 66,66, 67,67,    89,89, 90,90],
+                        [65,65, 66,66, 75,75, 79,79,    90,90, 91,91]],
+
+            'LRA1'   : [[65,66, 67,68, 69,70, 71,72, 73,74, 75,76, 77,78, 79,80],
+                        [66,67, 68,69, 70,71, 72,73, 74,75, 76,77, 78,79, 80,81]],
+            'LRB1'   : [[81, 82, 83, 84,    93, 94],
+                        [82, 83, 84, 85,    94, 95]],  
+            
+            'LRSA'   : [[30]], 
+            'LRSB'   : [[31]],
+
+            'LWSA'   : [[60]],
+            'LWSB'   : [[92]],
+            'LCC'    : [[91, 92]],
+        }
+        syncCode = syncTable[1::2]
+        nglshift = nllshift = 14 # vmcnt shift for ngl and nll
+    elif isTN(kernel) and not useLDSTr and TLDS == 1:
         #index and code pair
         syncTable = [-1, SWaitCnt(dscnt=5, vlcnt=-1, vscnt=-1, comment="wait for LRB1-0"),
                      7, SWaitCnt(dscnt=10, vlcnt=-1, vscnt=-1, comment="wait for LRB1-1"),
@@ -1439,6 +1487,7 @@ def hasCustomSchedule(kernel):
     TLDS = kernel["TransposeLDS"]
 
     is256x256x64DTL  = [MT0, MT1, DU, PGR, PLR, DTL] == [256, 256, 64, 2, 1, True]
+    is256x192x64DTL  = [MT0, MT1, DU, PGR, PLR, DTL] == [256, 192, 64, 2, 1, True]
     is192x256x64DTL  = [MT0, MT1, DU, PGR, PLR, DTL] == [192, 256, 64, 2, 1, True]
     is256x256x128DTL = [MT0, MT1, DU, PGR, PLR, DTL] == [256, 256, 128, 2, 0, True]
     is160x256x64DTL = [MT0, MT1, DU, PGR, PLR, DTL] == [160, 256, 64, 2, 1, True]
@@ -1459,6 +1508,8 @@ def hasCustomSchedule(kernel):
         return _get_schedule_256x256x128_8bit(kernel, useLDSTr, TLDS)
     elif is192x256x64DTL and is16bit and not isMixed and ([GRVWA, GRVWB, LRVW] == [8, 8, 8]) and MI == [16,16,32,1] and MIWG == [2,2]:
         return _get_schedule_192x256x64_16bit(kernel, useLDSTr, TLDS)
+    elif is256x192x64DTL and is16bit and not isMixed and ([GRVWA, GRVWB, LRVW] == [8, 8, 8]) and MI == [16,16,32,1] and MIWG == [2,2]:
+        return _get_schedule_256x192x64_16bit(kernel, useLDSTr, TLDS)
     elif is160x256x64DTL and is16bit and not isMixed and ([GRVWA, GRVWB, LRVW] == [8,8,8]) and MI == [16,16,32,1] and MIWG == [2,2]:
         return _get_schedule_160x256x64_16bit(kernel, useLDSTr, TLDS)
     elif is256x160x64DTL and is16bit and not isMixed and ([GRVWA, GRVWB, LRVW] == [8,8,8]) and MI == [16,16,32,1] and MIWG == [2,2]:
