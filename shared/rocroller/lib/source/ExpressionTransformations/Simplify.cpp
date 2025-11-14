@@ -433,16 +433,6 @@ namespace rocRoller
                 return {};
             }
 
-            ExpressionPtr operator()(Register::ValuePtr const& expr1,
-                                     Register::ValuePtr const& expr2) const
-            {
-                auto merge = Register::tryMergeSubsets({expr1, expr2});
-                if(merge.has_value())
-                    return merge.value()->expression();
-
-                return {};
-            }
-
             template <typename ARG1, typename ARG2>
             ExpressionPtr operator()(ARG1 const& expr1, ARG2 const& expr2) const
             {
@@ -649,35 +639,6 @@ namespace rocRoller
                 return std::make_shared<Expression>(expr);
             }
 
-            ExpressionPtr operator()(Register::ValuePtr const& expr) const
-            {
-                if(expr->allocationState() == Register::AllocationState::NoAllocation
-                    || expr->registerCount() == 1)
-                    return std::make_shared<Expression>(expr);
-
-                auto     regSize     = Register::bitsPerRegister;
-                uint32_t regStartBit = 0;
-                uint32_t regEndBit   = regStartBit + regSize - 1;
-
-                uint32_t startBit = m_offset;
-                uint32_t endBit   = m_offset + m_width - 1;
-
-                for(size_t i = 0; i < expr->registerCount(); ++i)
-                {
-                    // BitFieldExtract is fully contained within this register
-                    if(startBit >= regStartBit && endBit <= regEndBit)
-                    {
-                        m_offset -= regStartBit;
-                        return std::make_shared<Expression>(expr->subset({i}));
-                    }
-
-                    regStartBit += regSize;
-                    regEndBit += regSize;
-                }
-
-                return std::make_shared<Expression>(expr);
-            }
-
             template <typename Expr>
             ExpressionPtr operator()(Expr const& expr) const
             {
@@ -701,40 +662,6 @@ namespace rocRoller
             mutable uint32_t m_offset;
             uint32_t         m_width;
         };
-
-        /**
-         * Attempts to simplify a BitFieldExtract into a register subset operation.
-         * Returns the subset if the extraction is aligned to full register boundaries, nullopt otherwise.
-         */
-        std::optional<ExpressionPtr> bfeToSubset(BitFieldExtract const& expr)
-        {
-            auto const* reg = std::get_if<Register::ValuePtr>(expr.arg.get());
-            if(!reg || (*reg)->allocationState() != Register::AllocationState::Allocated
-               || (*reg)->registerCount() <= 1)
-                return std::nullopt;
-
-            // Check if extraction is aligned to register boundaries
-            if(expr.offset % Register::bitsPerRegister != 0
-               || expr.width % Register::bitsPerRegister != 0)
-                return std::nullopt;
-
-            uint registerOffset = expr.offset / Register::bitsPerRegister;
-            uint registerCount  = expr.width / Register::bitsPerRegister;
-
-            // Only returns if the register count matches the expected output data type
-            if (DataTypeInfo::Get(expr.outputDataType).registerCount != registerCount)
-                return std::nullopt;
-
-            // Check bounds
-            if(registerOffset + registerCount > (*reg)->registerCount())
-                return std::nullopt;
-
-            std::vector<int> indices(registerCount);
-            std::iota(indices.begin(), indices.end(), registerOffset);
-
-            auto subset = (*reg)->subset(indices);
-            return convert(expr.outputDataType, subset->expression());
-        }
 
         /**
          * Returns a BitFieldExtract expression that extracts the specified bitfield from the given expression.
@@ -865,10 +792,6 @@ namespace rocRoller
                 // Extracting the entire arg with no offset
                 if(cpy.offset == 0 && cpy.width == resultVariableType(cpy.arg).getElementSize() * 8)
                     return call(convert(cpy.outputDataType, cpy.arg));
-
-                // If extracting full registers, we can just return them as a subset
-                if(auto subset = bfeToSubset(cpy))
-                    return call(subset.value());
 
                 cpy.arg = call(cpy.arg);
                 return std::make_shared<Expression>(cpy);
