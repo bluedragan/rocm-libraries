@@ -132,8 +132,8 @@ struct MIOpenBatchNormFwdTrainSpatialHIPImpl<1, FpType, FpPrecType, FpAccumType>
                     hwidx = (k + (lid << 2)) - (nidx * mio_bn_config::hw);
                     index = nidx * mio_bn_config::chw + chwid + hwidx;
                     read4 = *(reinterpret_cast<const fp_type4*>(in + index));
-                    miopen::batchnorm::_accumulate4(mean, read4);
-                    miopen::batchnorm::_accumulate_mad4(variance, read4, read4, variance);
+                    miopen::batchnorm::_accumulate(mean, read4);
+                    miopen::batchnorm::_accumulate_mad(variance, read4, read4);
                 }
             }};
 
@@ -151,8 +151,8 @@ struct MIOpenBatchNormFwdTrainSpatialHIPImpl<1, FpType, FpPrecType, FpAccumType>
                 if(index < (mio_bn_config::nchw - 3))
                 {
                     read4 = *(reinterpret_cast<const fp_type4*>(in + index));
-                    miopen::batchnorm::_accumulate4(mean, read4);
-                    miopen::batchnorm::_accumulate_mad4(variance, read4, read4, variance);
+                    miopen::batchnorm::_accumulate(mean, read4);
+                    miopen::batchnorm::_accumulate_mad(variance, read4, read4);
                 }
             }
         }
