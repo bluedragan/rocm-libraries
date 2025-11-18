@@ -541,46 +541,46 @@ def _get_schedule_256x192x64_16bit(kernel, useLDSTr, TLDS):
     syncCode = []
     nglshift = nllshift = 0 # vmcnt shift for ngl and nll
     if isNN(kernel) and useLDSTr and TLDS==1:
+        # Note: A/B Global read orders are swapped
+        # i.e. GRA contains GR for B
+        kernel["SwapGlobalReadOrder"] = True
         n_code_paths = 2
         syncTable = [
-            22, SWaitCnt(dscnt=8+3, vlcnt=-1, vscnt=-1, comment="Wait for first 8 of LRA0"),
-            22, SBarrier(comment=""),
+            13, SWaitCnt(dscnt=2, vlcnt=-1, vscnt=-1, comment="Wait for LRB0"),
+            13, SBarrier(comment=""),
 
-            47, SWaitCnt(dscnt=3, vlcnt=-1, vscnt=-1, comment="Wait for rest of LRA0 and half of LRB0"),
+            47, SWaitCnt(dscnt=4, vlcnt=-1, vscnt=-1, comment="Wait for LRA0"),
+            47, SWaitCnt(dscnt=-1, vlcnt=14, vscnt=-1, comment="Wait for previous GRB"),
+            47, SBarrier(comment=""),
 
-            63, SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="Wait for rest of LRB0"),
-            63, SWaitCnt(dscnt=-1, vlcnt=14, vscnt=-1, comment="Wait for part of previous GRA"),
+            63, SWaitCnt(dscnt=-1, vlcnt=14, vscnt=-1, comment="Wait for previous GRA"),
             63, SBarrier(comment=""),
 
-            80, SWaitCnt(dscnt=-1, vlcnt=12+2, vscnt=-1, comment="Wait for most of previous GRB"),
-            80, SBarrier(comment=""),
-
-            92, SWaitCnt(dscnt=-1, vlcnt=14, vscnt=-1, comment="Wait for previous GRB"),
-            92, SBarrier(comment=""),
-
-            95, SWaitCnt(dscnt=3, vlcnt=-1, vscnt=-1, comment="Wait for most of PLR (good till i>24)"),
+            95, SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="Wait for PLR"),
+            95, SBarrier(comment=""),
         ]
         optSchedule = {
             'SYNC'   : [syncTable[::2]],
-            'GRIncA' : [[0,1,2,     3,4,5,      6,7,8]],
-            'GRIncB' : [[9,10,11,  12,13,14,   15,16,17]],                
-            'LRA0'   : [[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-                        [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]],
-            'LRB0'   : [[18,19,20,  23,24,25],
-                        [19,20,21,  24,25,26]],
+            'GRIncB' : [[0,1,2,3,4,5,6,7,8]],
+            'GRIncA' : [[9,10,11,12,13,14,15,16,17]],
+            'LRA0'   : [[10,10, 14,14,16,16,18,18,20,20,22,22,24,24,26,26],
+                        [11,11, 15,15,17,17,19,19,21,21,23,23,25,25,27,27]],
+            'LRB0'   : [[0,0,2,2,4,4],
+                        [1,1,3,3,5,5]],
             
-            'GRA'    : [[24,24, 25,25, 26,26, 27,27,    48,48, 49,49, 50,50, 51,51],
-                        [25,25, 26,26, 27,27, 28,28,    49,49, 50,50, 51,51, 52,52]],
-            'GRB'    : [[64,64, 65,65, 66,66, 67,67,    89,89, 90,90],
-                        [65,65, 66,66, 75,75, 79,79,    90,90, 91,91]],
+            # Note: These are swapped
+            'GRA'    : [[15,15, 17,17, 19,19, 21,21, 23,23, 25,25],
+                        [14,14, 16,16, 18,18, 20,20, 22,22, 24,24]],
+            'GRB'    : [[48,48, 50,50, 52,52, 54,54, 56,56, 58,58, 60,60, 62,62],
+                        [49,49, 51,51, 53,53, 55,55, 57,57, 59,59, 61,61, 63,63]],
 
-            'LRA1'   : [[65,66, 67,68, 69,70, 71,72, 73,74, 75,76, 77,78, 79,80],
-                        [66,67, 68,69, 70,71, 72,73, 74,75, 76,77, 78,79, 80,81]],
-            'LRB1'   : [[81, 82, 83, 84,    93, 94],
-                        [82, 83, 84, 85,    94, 95]],  
+            'LRA1'   : [[64,64, 66,66, 68,68, 70,70, 72,72, 74,74, 76,76, 78,78],
+                        [65,65, 67,67, 69,69, 71,71, 73,73, 75,75, 77,77, 79,79]],
+            'LRB1'   : [[49,49, 51,51, 53,53],
+                        [48,48, 50,50, 52,52]],  
             
-            'LRSA'   : [[30]], 
-            'LRSB'   : [[31]],
+            'LRSA'   : [[28]], 
+            'LRSB'   : [[28]],
 
             'LWSA'   : [[60]],
             'LWSB'   : [[92]],
