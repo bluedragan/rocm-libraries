@@ -87,6 +87,39 @@ __forceinline__ __device__ void lds_reduce2(FloatAccum& x,
     y = lcl_data_y[0] * scale;
 }
 
+template <typename FloatAccum, unsigned int SizeLclData>
+__forceinline__ __device__ void lds_reduce2_2d(FloatAccum& x,
+                                               FloatAccum& y,
+                                               FloatAccum scale,
+                                               FloatAccum (&lcl_data)[SizeLclData],
+                                               unsigned int xstride,
+                                               unsigned int xlid,
+                                               unsigned int ylid,
+                                               unsigned int size)
+{
+    unsigned int offset1 = 2 * (xlid + ylid * xstride);
+    // store the values by pairs (so the compiler will generate
+    // one instruction to read/write them)
+    lcl_data[offset1 + 0] = x;
+    lcl_data[offset1 + 1] = y;
+    __syncthreads();
+    for(unsigned int red = (size >> 1); red > 0; red >>= 1)
+    {
+        if(ylid < red)
+        {
+            unsigned int offset2 = offset1 + red * xstride * 2;
+            // make sure there is one read and one write
+            x += lcl_data[offset2 + 0];
+            y += lcl_data[offset2 + 1];
+            lcl_data[offset1 + 0] = x;
+            lcl_data[offset1 + 1] = y;
+        }
+        __syncthreads();
+    }
+    x = lcl_data[xlid * 2 + 0] * scale;
+    y = lcl_data[xlid * 2 + 1] * scale;
+}
+
 template <typename FloatAccum>
 __forceinline__ __device__ void dpp_interleaved_reduction(FloatAccum& temp_sum1,
                                                           FloatAccum& temp_sum2)

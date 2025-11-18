@@ -175,6 +175,7 @@ template <typename MiopenConfig,
           int NCHW,
           int MaxN,
           int C,
+          int N,
           int HW,
           int NHW,
           int CHW,
@@ -192,6 +193,7 @@ struct proto_config
     static_assert(NCHW >= 0, "MIO_BN_NCHW should be always >= 0");
     static_assert(MaxN >= 0, "MIO_BN_MAXN should be always >= 0");
     static_assert(C >= 0, "MIO_BN_C should be always >= 0");
+    static_assert(N >= 0, "MIO_BN_N should be always >= 0");
     static_assert(HW >= 0, "MIO_BN_HW should be always >= 0");
     static_assert(NHW >= 0, "MIO_BN_NHW should be always >= 0");
     static_assert(CHW >= 0, "MIO_BN_CHW should be always >= 0");
@@ -216,6 +218,7 @@ struct proto_config
     static constexpr unsigned int nchw         = static_cast<unsigned int>(NCHW);
     static constexpr unsigned int max_n        = static_cast<unsigned int>(MaxN);
     static constexpr unsigned int c            = static_cast<unsigned int>(C);
+    static constexpr unsigned int n            = static_cast<unsigned int>(N);
     static constexpr unsigned int hw           = static_cast<unsigned int>(HW);
     static constexpr unsigned int nhw          = static_cast<unsigned int>(NHW);
     static constexpr unsigned int chw          = static_cast<unsigned int>(CHW);
@@ -286,6 +289,7 @@ using config = miopen::batchnorm::detail::proto_config<
     MIO_BN_NCHW,
     MIO_BN_MAXN,
     MIO_BN_C,
+    MIO_BN_N,
     MIO_BN_HW,
     MIO_BN_NHW,
     MIO_BN_CHW,

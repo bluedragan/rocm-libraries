@@ -26,11 +26,13 @@
 
 #pragma once
 
+#include "vector_types.hpp"
 #ifdef __HIP_PLATFORM_AMD__
 #include <hip/amd_detail/amd_hip_fp16.h>
 #include <hip/amd_detail/amd_hip_bf16.h>
 
 namespace miopen {
+namespace detail {
 
 //=============================================================================
 // Float overloads
@@ -47,6 +49,7 @@ __forceinline__ __device__ float pow(float x, float y) { return powf(x, y); }
 __forceinline__ __device__ float fabs(float x) { return fabsf(x); }
 __forceinline__ __device__ float fmax(float x, float y) { return fmaxf(x, y); }
 __forceinline__ __device__ float fmin(float x, float y) { return fminf(x, y); }
+__forceinline__ __device__ float fma(float a, float b, float c) { return ::fma(a, b, c); }
 
 //=============================================================================
 // Half precision overloads
@@ -84,6 +87,11 @@ __forceinline__ __device__ _Float16 tanh(_Float16 x)
     __half numerator   = __hsub(exp2x, __half(1.0f));
     __half denominator = __hadd(exp2x, __half(1.0f));
     return __hdiv(numerator, denominator);
+}
+
+__forceinline__ __device__ _Float16 fma(_Float16 a, _Float16 b, _Float16 c)
+{
+    return __hfma(__half(a), __half(b), __half(c));
 }
 
 //=============================================================================
@@ -151,6 +159,15 @@ __forceinline__ __device__ ushort tanh(ushort x)
     return __bfloat16_as_ushort(__hdiv(numerator, denominator));
 }
 
+__forceinline__ __device__ ushort fma(ushort a, ushort b, ushort c)
+{
+    __hip_bfloat16 bf_a = __ushort_as_bfloat16(a);
+    __hip_bfloat16 bf_b = __ushort_as_bfloat16(b);
+    __hip_bfloat16 bf_c = __ushort_as_bfloat16(c);
+
+    return __hfma(bf_a, bf_b, bf_c);
+}
+
 //=============================================================================
 // Double precision overloads
 //=============================================================================
@@ -167,6 +184,186 @@ __forceinline__ __device__ double pow(double x, double y) { return ::pow(x, y); 
 __forceinline__ __device__ double fabs(double x) { return ::fabs(x); }
 __forceinline__ __device__ double fmax(double x, double y) { return ::fmax(x, y); }
 __forceinline__ __device__ double fmin(double x, double y) { return ::fmin(x, y); }
+__forceinline__ __device__ double fma(double a, double b, double c) { return ::fma(a, b, c); }
+
+} // namespace detail
+
+//=============================================================================
+// 2-element vector overloads
+//=============================================================================
+
+template <typename FpVecType>
+__forceinline__ __device__ FpVecType exp(FpVecType x)
+{
+    constexpr auto VecSize = mapped_vector_info<FpVecType>::size;
+    if constexpr(VecSize == 4)
+    {
+        FpVecType out;
+        out.x = detail::exp(x.x);
+        out.y = detail::exp(x.y);
+        out.z = detail::exp(x.z);
+        out.w = detail::exp(x.w);
+        return out;
+    }
+    else if constexpr(VecSize == 1)
+    {
+        return detail::exp(x);
+    }
+    else
+    {
+        static_assert(false, "Unsupported miopen vector operation.");
+    }
+}
+
+template <typename FpVecType>
+__forceinline__ __device__ FpVecType log(FpVecType x)
+{
+    constexpr auto VecSize = mapped_vector_info<FpVecType>::size;
+    if constexpr(VecSize == 4)
+    {
+        FpVecType out;
+        out.x = detail::log(x.x);
+        out.y = detail::log(x.y);
+        out.z = detail::log(x.z);
+        out.w = detail::log(x.w);
+        return out;
+    }
+    else if constexpr(VecSize == 1)
+    {
+        return detail::log(x);
+    }
+    else
+    {
+        static_assert(false, "Unsupported miopen vector operation.");
+    }
+}
+
+template <typename FpVecType>
+__forceinline__ __device__ FpVecType sqrt(FpVecType x)
+{
+    constexpr auto VecSize = mapped_vector_info<FpVecType>::size;
+    if constexpr(VecSize == 4)
+    {
+        FpVecType out;
+        out.x = detail::sqrt(x.x);
+        out.y = detail::sqrt(x.y);
+        out.z = detail::sqrt(x.z);
+        out.w = detail::sqrt(x.w);
+        return out;
+    }
+    else if constexpr(VecSize == 1)
+    {
+        return detail::sqrt(x);
+    }
+    else
+    {
+        static_assert(false, "Unsupported miopen vector operation.");
+    }
+}
+
+template <typename FpVecType>
+__forceinline__ __device__ FpVecType rsqrt(FpVecType x)
+{
+    constexpr auto VecSize = mapped_vector_info<FpVecType>::size;
+    if constexpr(VecSize == 4)
+    {
+        FpVecType out;
+        out.x = detail::rsqrt(x.x);
+        out.y = detail::rsqrt(x.y);
+        out.z = detail::rsqrt(x.z);
+        out.w = detail::rsqrt(x.w);
+        return out;
+    }
+    else if constexpr(VecSize == 1)
+    {
+        return detail::rsqrt(x);
+    }
+    else
+    {
+        static_assert(false, "Unsupported miopen vector operation.");
+    }
+}
+
+template <typename FpVecType>
+__forceinline__ __device__ FpVecType fma(FpVecType a, FpVecType b, FpVecType c)
+{
+    constexpr auto VecSize = mapped_vector_info<FpVecType>::size;
+    if constexpr(VecSize == 4)
+    {
+        FpVecType out;
+        out.x = detail::fma(a.x, b.x, c.x);
+        out.y = detail::fma(a.y, b.y, c.y);
+        out.z = detail::fma(a.z, b.z, c.z);
+        out.w = detail::fma(a.w, b.w, c.w);
+        return out;
+    }
+    else if constexpr(VecSize == 1)
+    {
+        return detail::fma(a, b, c);
+    }
+    else
+    {
+        static_assert(false, "Unsupported miopen vector operation.");
+    }
+}
+
+template <typename FpVecType>
+__forceinline__ __device__ FpVecType fmax(FpVecType x, FpVecType y)
+{
+    constexpr auto VecSize = mapped_vector_info<FpVecType>::size;
+    if constexpr(VecSize == 4)
+    {
+        FpVecType out;
+        out.x = detail::fmax(x.x, y.x);
+        out.y = detail::fmax(x.y, y.y);
+        out.z = detail::fmax(x.z, y.z);
+        out.w = detail::fmax(x.w, y.w);
+        return out;
+    }
+    else if constexpr(VecSize == 1)
+    {
+        return detail::fmax(x, y);
+    }
+    else
+    {
+        static_assert(false, "Unsupported miopen vector operation.");
+    }
+}
+
+template <typename FpVecType>
+__forceinline__ __device__ FpVecType fmin(FpVecType x, FpVecType y)
+{
+    constexpr auto VecSize = mapped_vector_info<FpVecType>::size;
+    if constexpr(VecSize == 4)
+    {
+        FpVecType out;
+        out.x = detail::fmin(x.x, y.x);
+        out.y = detail::fmin(x.y, y.y);
+        out.z = detail::fmin(x.z, y.z);
+        out.w = detail::fmin(x.w, y.w);
+        return out;
+    }
+    else if constexpr(VecSize == 1)
+    {
+        return detail::fmin(x, y);
+    }
+    else
+    {
+        static_assert(false, "Unsupported miopen vector operation.");
+    }
+}
+
+template <typename FpVecType>
+__forceinline__ __device__ FpVecType min(FpVecType x, FpVecType y)
+{
+    return fmin(x, y);
+}
+
+template <typename FpVecType>
+__forceinline__ __device__ FpVecType max(FpVecType x, FpVecType y)
+{
+    return fmax(x, y);
+}
 
 } // namespace miopen
 
