@@ -7,6 +7,7 @@ if(NOT BUILD_PLUGIN_AS_DEPENDENCY)
     cmake_minimum_required(VERSION 3.25.2)
     add_compile_definitions(__HIP_PLATFORM_AMD__)
 
+    message(STATUS "CWMDBG miopen_legacy: here1")
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/ClangToolChain.cmake" CACHE STRING "Toolchain file")
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -19,7 +20,7 @@ if(NOT BUILD_PLUGIN_AS_DEPENDENCY)
     if(NOT WIN32)
         # Only set if not already specified by user
         if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-            set(CMAKE_INSTALL_PREFIX "${ROCM_PATH}" CACHE PATH "Install path prefix" FORCE)
+            set(CMAKE_INSTALL_PREFIX "${HIP_ROCM_PATH}" CACHE PATH "Install path prefix" FORCE)
         endif()
         message(STATUS "Setting CMAKE_INSTALL_PREFIX to ${CMAKE_INSTALL_PREFIX}")
     endif()
@@ -38,7 +39,7 @@ if(NOT BUILD_PLUGIN_AS_DEPENDENCY)
         APPEND
         CMAKE_MODULE_PATH
         ${CMAKE_CURRENT_SOURCE_DIR}/cmake
-        ${ROCM_PATH}/lib/cmake/hip
+        ${HIP_ROCM_PATH}/lib/cmake/hip
         ${HIP_DIR}/cmake
     )
     
@@ -71,9 +72,9 @@ if(NOT BUILD_PLUGIN_AS_DEPENDENCY)
     list(
         APPEND
         CMAKE_PREFIX_PATH
-        ${ROCM_PATH}/llvm
-        ${ROCM_PATH}
-        ${ROCM_PATH}/hip
+        ${HIP_ROCM_PATH}/llvm
+        ${HIP_ROCM_PATH}
+        ${HIP_ROCM_PATH}/hip
     )
     
     find_package(hip REQUIRED)
@@ -165,7 +166,7 @@ set_target_properties(miopen_legacy_plugin PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${HIPDNN_BUILD_PLUGIN_ENGINE_DIR}"
     RUNTIME_OUTPUT_DIRECTORY "${HIPDNN_BUILD_PLUGIN_ENGINE_DIR}"
     ARCHIVE_OUTPUT_DIRECTORY "${HIPDNN_BUILD_PLUGIN_ENGINE_DIR}"
-    INSTALL_RPATH "${ROCM_PATH}/lib"
+    INSTALL_RPATH "${HIP_ROCM_PATH}/lib"
     INSTALL_RPATH_USE_LINK_PATH TRUE
     BUILD_WITH_INSTALL_RPATH TRUE
 )

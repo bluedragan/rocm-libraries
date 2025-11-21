@@ -21,7 +21,7 @@ function(checkToolVersion TOOL_BINARY TOOL_NAME EXPECTED_VERSION VERSION_REGEX S
     if(VERSION_OUTPUT MATCHES "${VERSION_REGEX}")
         set(TOOL_MAJOR_VERSION "${CMAKE_MATCH_1}")
         if(NOT TOOL_MAJOR_VERSION STREQUAL EXPECTED_VERSION)
-            message(WARNING "${TOOL_NAME} version mismatch! Expected: ${EXPECTED_VERSION}, Found: ${TOOL_MAJOR_VERSION}, Full version: ${VERSION_OUTPUT}")
+            message(WARNING "${TOOL_NAME} version mismatch! Expected: ${EXPECTED_VERSION}, Found: ${TOOL_MAJOR_VERSION}, Full version: ${VERSION_OUTPUT} Path: ${TOOL_BINARY}")
         else()
             string(REPLACE "{VERSION}" "${TOOL_MAJOR_VERSION}" SUCCESS_MSG "${SUCCESS_MESSAGE_FORMAT}")
             string(REPLACE "{PATH}" "${TOOL_BINARY}" SUCCESS_MSG "${SUCCESS_MSG}")

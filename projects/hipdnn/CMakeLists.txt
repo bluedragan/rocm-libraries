@@ -33,7 +33,7 @@ endif()
 if(NOT WIN32)
     # Only set if not already specified by user
     if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-        set(CMAKE_INSTALL_PREFIX "${ROCM_PATH}" CACHE PATH "Install path prefix" FORCE)
+        set(CMAKE_INSTALL_PREFIX "${HIP_ROCM_PATH}" CACHE PATH "Install path prefix" FORCE)
     endif()
     message(STATUS "Setting CMAKE_INSTALL_PREFIX to ${CMAKE_INSTALL_PREFIX}")
 endif()
@@ -83,7 +83,7 @@ list(
     APPEND
     CMAKE_MODULE_PATH
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake
-    ${ROCM_PATH}/${CMAKE_INSTALL_LIBDIR}/cmake/hip
+    ${HIP_ROCM_PATH}/${CMAKE_INSTALL_LIBDIR}/cmake/hip
     ${HIP_DIR}/cmake
 )
 
@@ -92,9 +92,9 @@ list(
 list(
     APPEND
     CMAKE_PREFIX_PATH
-    ${ROCM_PATH}/llvm
-    ${ROCM_PATH}
-    ${ROCM_PATH}/hip
+    ${HIP_ROCM_PATH}/llvm
+    ${HIP_ROCM_PATH}
+    ${HIP_ROCM_PATH}/hip
 )
 
 include(cmake/Dependencies.cmake)
