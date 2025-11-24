@@ -1421,48 +1421,53 @@ def _get_schedule_96x256x64_16bit(kernel, userLDSTr, TLDS):
 
     if isTN(kernel) and TLDS==1:
         syncTable = [
-            -1, SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="Wait for LRB1"),
-            -1, SBarrier(comment="barrier at start"),
-
-            4, SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="Wait for LRA0"),
-            4, SBarrier(comment=""),
+            8, SWaitCnt(dscnt=3-3+1, vlcnt=-1, vscnt=-1, comment="Wait for LRA0 and 8/8 of LRB1"),
+            8, SBarrier(comment=""),
 
             24, SWaitCnt(dscnt=0, vlcnt=11, vscnt=-1, comment="Wait for LRB0 and GRA"),
             24, SBarrier(comment=""),
 
-            32, SWaitCnt(dscnt=-1, vlcnt=11, vscnt=-1, comment="Wait for GRB"),
-            32, SBarrier(comment=""),
+            40, SWaitCnt(dscnt=-1, vlcnt=11, vscnt=-1, comment="Wait for GRB"),
+            40, SBarrier(comment=""),
             
-            47, SWaitCnt(dscnt= 0, vlcnt=-1, vscnt=-1, comment="Wait for LRA1 and LRB1"),
+            47, SWaitCnt(dscnt=5, vlcnt=-1, vscnt=-1, comment="Wait for LRA1 and 5/8 of LRB1"),
             47, SBarrier(comment=""),
         ]
         optSchedule = {
             'SYNC'   : [syncTable[::2]],
 
-            'GRIncA' : [[0,0,1,1,2,2,3,3,3]],
-            'GRIncB' : [[9,11,13,15,17,19,21,23,25]],
+            'GRIncA' : [[0,1,1,1,2,2,3,3,3],
+                        [0,0,0,1,2,2,2,3,3]],
+            'GRIncB' : [[4,4,5,5,5,6,6,6,7]],
             
-            'LRA0'   : [[0,1,2]],
-            'LRB0'   : [[4,5,6,7,8,8,9,9]],
+            'LRA0'   : [[0,2,4],
+                        [1,3,5]],
+            'LRB0'   : [[2, 8,8, 12,12, 16,16, 18],
+                        [3, 9,9, 13,13, 17,17, 19]],
 
-            'GRA'    : [[4,4, 5,5, 6,6]],
-            'GRB'    : [[24,24, 25,25, 26,26, 27,27, 28,28, 29,29, 30,30, 31,31]],
+            'GRA'    : [[8,8, 12,12, 16,16],
+                        [9,9, 13,13, 17,17]],
+            # TODO: Last 4 GRAs are too close and stall
+            'GRB'    : [[24,24, 26,26, 28,28, 30,30, 32,32, 34,34, 36,36, 38,38],
+                        [25,25, 27,27, 29,29, 31,31, 33,33, 35,35, 37,37, 39,39]],
             
-            'LRA1'   : [[24,25,26]],
-            'LRB1'   : [[33,34,35,36,37,38,39,40]],
+            'LRA1'   : [[25,25, 27],
+                        [24,24, 26]],
+            'LRB1'   : [[40,40,42,42,44,44,46,46],
+                        [41,41,43,43,45,45,46,46]],
             
-            'LRSA'   : [[5]],
-            'LRSB'   : [[10]],
-            'LWSA'   : [[7]],
-            'LWSB'   : [[32]],
-            'LCC'    : [[47, 47]],
+            'LRSA'   : [[10]],
+            'LRSB'   : [[20]],
+            'LWSA'   : [[40]],
+            'LWSB'   : [[41]],
+            'LCC'    : [[46, 46]],
         }
         syncCode = syncTable[1::2]
         nglshift = nllshift = 4
     else:
         return False, None
     numMfma = 48
-    opt1 = ScheduleInfo(1, numMfma, optSchedule, syncCode, nglshift, nllshift)
+    opt1 = ScheduleInfo(2, numMfma, optSchedule, syncCode, nglshift, nllshift)
     return True, opt1
 
 def hasCustomSchedule(kernel):
