@@ -67,8 +67,19 @@
 #include <utility>
 #include <vector>
 
-#define TUNING_SHARED_MEMORY_MAX 65536u
-// Support half operators on host side
+/** \brief Maximum shared memory (in bytes) used for kernel tuning.
+ *
+ *  65536 bytes equals 64 KiB, which is the typical per-block shared memory limit on CUDA
+ *  and the per-work-group LDS limit on HIP for most GPUs up to CDNA3.
+ *
+ *  \note Future GPU architectures do support more than 64 KiB of shared
+ *        memory per block or work-group. This value should eventually be obtained
+ *        dynamically from device properties such as hipDeviceProp_t::sharedMemPerBlock
+ *        instead of being hardcoded.
+ */
+#ifndef TUNING_SHARED_MEMORY_MAX
+    #define TUNING_SHARED_MEMORY_MAX 65536u
+#endif
 
 inline const char* get_seed_message()
 {
@@ -118,8 +129,7 @@ private:
 struct half_less
 {
     ROCPRIM_HOST_DEVICE
-    inline bool
-        operator()(const rocprim::half& a, const rocprim::half& b) const
+    inline bool operator()(const rocprim::half& a, const rocprim::half& b) const
     {
 #if __HIP_DEVICE_COMPILE__
         return a < b;
@@ -132,8 +142,7 @@ struct half_less
 struct half_plus
 {
     ROCPRIM_HOST_DEVICE
-    inline rocprim::half
-        operator()(const rocprim::half& a, const rocprim::half& b) const
+    inline rocprim::half operator()(const rocprim::half& a, const rocprim::half& b) const
     {
 #if __HIP_DEVICE_COMPILE__
         return a + b;
@@ -146,8 +155,7 @@ struct half_plus
 struct half_equal_to
 {
     ROCPRIM_HOST_DEVICE
-    inline bool
-        operator()(const rocprim::half& a, const rocprim::half& b) const
+    inline bool operator()(const rocprim::half& a, const rocprim::half& b) const
     {
 #if __HIP_DEVICE_COMPILE__
         return a == b;
@@ -262,8 +270,7 @@ struct custom_type_decomposer
     using U = typename CustomType::second_type;
 
     __host__ __device__
-    ::rocprim::tuple<T&, U&>
-        operator()(CustomType& key) const
+    ::rocprim::tuple<T&, U&> operator()(CustomType& key) const
     {
         return ::rocprim::tuple<T&, U&>{key.x, key.y};
     }
@@ -467,13 +474,13 @@ std::vector<T>
     // std::uniform_real_distribution cannot handle:
     //   - rocprim::half, use float instead.
     //   - single byte integer-based types (char, unsigned char, int8_t, uint8_t), use int instead
-    using dis_type =
-        typename std::conditional<std::is_same<rocprim::half, T>::value,
-                                  float,
-                                  typename std::conditional<rocprim::is_integral<T>::value
-                                                   && !common::is_valid_for_int_distribution<T>::value,
-                                                   typename std::conditional<std::is_signed<T>::value, int, unsigned int>::type,
-                                                   T>::type>::type;
+    using dis_type = typename std::conditional<
+        std::is_same<rocprim::half, T>::value,
+        float,
+        typename std::conditional<
+            rocprim::is_integral<T>::value && !common::is_valid_for_int_distribution<T>::value,
+            typename std::conditional<std::is_signed<T>::value, int, unsigned int>::type,
+            T>::type>::type;
 
     using key_distribution_type = std::conditional_t<rocprim::is_integral<T>::value,
                                                      common::uniform_int_distribution<dis_type>,
@@ -756,6 +763,70 @@ public:
         return string;
     }
 };
+
+using custom_int2            = common::custom_type<int, int>;
+using custom_float2          = common::custom_type<float, float>;
+using custom_double2         = common::custom_type<double, double>;
+using huge_float2_1024       = common::custom_huge_type<1024, float, float>;
+using huge_float2_2048       = common::custom_huge_type<2048, float, float>;
+using custom_int_double      = common::custom_type<int, double>;
+using custom_char_double     = common::custom_type<char, double>;
+using custom_char_short      = common::custom_type<char, short>;
+using custom_longlong_double = common::custom_type<long long, double>;
+using custom_float_int16     = common::custom_type<float, int16_t>;
+using hip_vector_float2      = HIP_vector_type<float, 2>;
+using hip_vector_double2     = HIP_vector_type<double, 2>;
+using copyable_char_double   = common::custom_type_copyable<char, double>;
+using copyable_double_double = common::custom_type_copyable<double, double>;
+
+// This can be removed once all rocPRIM benchmarks use primbench.
+#ifndef PRIMBENCH_REGISTER_TYPE
+    #define PRIMBENCH_REGISTER_TYPE(TYPE, NAME)
+#endif
+
+PRIMBENCH_REGISTER_TYPE(char, "char")
+PRIMBENCH_REGISTER_TYPE(int, "int")
+PRIMBENCH_REGISTER_TYPE(short, "short")
+PRIMBENCH_REGISTER_TYPE(int8_t, "int8_t")
+PRIMBENCH_REGISTER_TYPE(uint8_t, "uint8_t")
+PRIMBENCH_REGISTER_TYPE(uint16_t, "uint16_t")
+PRIMBENCH_REGISTER_TYPE(uint32_t, "uint32_t")
+PRIMBENCH_REGISTER_TYPE(rocprim::half, "rocprim::half")
+PRIMBENCH_REGISTER_TYPE(rocprim::bfloat16, "rocprim::bfloat16")
+PRIMBENCH_REGISTER_TYPE(long long, "int64_t")
+PRIMBENCH_REGISTER_TYPE(float, "float")
+PRIMBENCH_REGISTER_TYPE(double, "double")
+PRIMBENCH_REGISTER_TYPE(custom_int2, "common::custom_type<int,int>")
+PRIMBENCH_REGISTER_TYPE(custom_float2, "common::custom_type<float,float>")
+PRIMBENCH_REGISTER_TYPE(custom_double2, "common::custom_type<double,double>")
+PRIMBENCH_REGISTER_TYPE(huge_float2_1024, "common::custom_type<1024,float,float>")
+PRIMBENCH_REGISTER_TYPE(huge_float2_2048, "common::custom_type<2048,float,float>")
+PRIMBENCH_REGISTER_TYPE(custom_int_double, "common::custom_type<int,double>")
+PRIMBENCH_REGISTER_TYPE(custom_char_double, "common::custom_type<char,double>")
+PRIMBENCH_REGISTER_TYPE(custom_char_short, "common::custom_type<char,short>")
+PRIMBENCH_REGISTER_TYPE(custom_longlong_double, "common::custom_type<int64_t,double>")
+PRIMBENCH_REGISTER_TYPE(custom_float_int16, "common::custom_type<float,int16_t>")
+PRIMBENCH_REGISTER_TYPE(rocprim::empty_type, "empty_type")
+PRIMBENCH_REGISTER_TYPE(hip_vector_float2, "float2")
+PRIMBENCH_REGISTER_TYPE(hip_vector_double2, "double2")
+PRIMBENCH_REGISTER_TYPE(rocprim::int128_t, "rocprim::int128_t")
+PRIMBENCH_REGISTER_TYPE(rocprim::uint128_t, "rocprim::uint128_t")
+PRIMBENCH_REGISTER_TYPE(copyable_char_double, "common::custom_type_copyable<char,double>")
+PRIMBENCH_REGISTER_TYPE(copyable_double_double, "common::custom_type_copyable<double,double>")
+
+// On MSVC `int64_t` and `long long` are the same,
+// resulting in a "multiple definitions" error.
+#ifndef _WIN32
+PRIMBENCH_REGISTER_TYPE(int64_t, "int64_t")
+#endif
+
+// On MSVC `uint64_t` and `unsigned long long` are the same,
+// resulting in a "multiple definitions" error.
+#ifndef _WIN32
+PRIMBENCH_REGISTER_TYPE(uint64_t, "uint64_t")
+#else
+PRIMBENCH_REGISTER_TYPE(unsigned long long, "unsigned long long")
+#endif
 
 template<typename T>
 struct Traits
