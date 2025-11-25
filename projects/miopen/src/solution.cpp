@@ -231,7 +231,6 @@ void Solution::RunImpl(const Handle& handle,
     {
         auto ctx = ExecutionContext{&handle};
         conv_problem.SetupFloats(ctx);
-        conv_problem.SetupComputeType(ctx);
         const auto invoker_factory =
             GetSolver().GetSolver().GetInvokeFactory(ctx, conv_problem, perf_cfg.value_or(""));
         auto kernel_handles = std::vector<Kernel>{std::begin(kernels), std::end(kernels)};
@@ -255,7 +254,6 @@ void Solution::RunImpl(const Handle& handle,
 
     auto conv_ctx = ExecutionContext{&handle};
     conv_problem.SetupFloats(conv_ctx);
-    conv_problem.SetupComputeType(conv_ctx);
 
     decltype(auto) db        = MakeConvDbGetter(conv_ctx);
     const auto conv_solution = GetSolver().GetSolver().FindSolution(
