@@ -20,20 +20,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef ROCPRIM_BENCHMARK_DEVICE_TRANSFORM_PARALLEL_HPP_
-#define ROCPRIM_BENCHMARK_DEVICE_TRANSFORM_PARALLEL_HPP_
+#pragma once
+
+#include "primbench.hpp"
 
 #include "benchmark_utils.hpp"
 
 #include "../common/utils_device_ptr.hpp"
 
-// Google Benchmark
-#include <benchmark/benchmark.h>
-
-// HIP API
 #include <hip/hip_runtime_api.h>
 
-// rocPRIM
 #include <rocprim/device/config_types.hpp>
 #include <rocprim/device/detail/device_config_helper.hpp>
 #include <rocprim/device/device_transform.hpp>
@@ -44,39 +40,68 @@
 #include <string>
 #include <vector>
 
-template<typename Config>
-std::string transform_config_name()
+inline const char* get_thread_load_method_name(rocprim::cache_load_modifier method)
 {
-    auto config = Config();
-    return "{bs:" + std::to_string(config.block_size)
-           + ",ipt:" + std::to_string(config.items_per_thread)
-           + ",lt:" + get_thread_load_method_name(config.load_type) + "}";
+    switch(method)
+    {
+        case rocprim::load_default: return "load_default";
+        case rocprim::load_ca: return "load_ca";
+        case rocprim::load_cg: return "load_cg";
+        case rocprim::load_nontemporal: return "load_nontemporal";
+        case rocprim::load_cv: return "load_cv";
+        case rocprim::load_ldg: return "load_ldg";
+        case rocprim::load_volatile: return "load_volatile";
+        case rocprim::load_count: return "load_count";
+    }
+    return "load_default";
 }
 
-template<>
-inline std::string transform_config_name<rocprim::default_config>()
+template<typename Config>
+auto config_name()
 {
-    return "default_config";
+    if constexpr(std::is_same_v<Config, rocprim::default_config>)
+    {
+        return std::string("default");
+    }
+    else
+    {
+        auto config = Config();
+        return primbench::json{}
+            .add("bs", config.block_size)
+            .add("ipt", config.items_per_thread)
+            .add("lt", get_thread_load_method_name(config.load_type));
+    }
 }
 
 template<typename T,
          bool IsPointer,
          bool IsBinary   = false,
          typename Config = rocprim::default_config>
-struct device_transform_benchmark : public benchmark_utils::autotune_interface
+struct device_transform_benchmark : public primbench::benchmark_interface
 {
-
-    std::string name() const override
+    primbench::json meta() const override
     {
+        auto algo = []
+        {
+            if constexpr(IsPointer)
+            {
+                return "device_transform_pointer";
+            }
+            else
+            {
+                return "device_transform";
+            }
+        };
 
-        using namespace std::string_literals;
-        return bench_naming::format_name(
-            "{lvl:device,algo:transform" + std::string(IsPointer ? "_pointer" : "")
-            + ",op:" + std::string(IsBinary ? "binary" : "unary") + ",value_type:"
-            + std::string(Traits<T>::name()) + ",cfg:" + transform_config_name<Config>() + "}");
+        return primbench::json{}
+            .add("lvl", "device")
+            .add("algo", algo())
+            .add("is_binary", IsBinary)
+            .add("value_type", primbench::name<T>())
+            .add("cfg", config_name<Config>());
     }
 
-    void run(benchmark_utils::state&& state) override
+    void run(primbench::state& state) override
     {
         const auto& stream = state.stream;
         const auto& bytes  = state.bytes;
@@ -84,23 +109,22 @@ struct device_transform_benchmark : public benchmark_utils::autotune_interface
 
         using output_type = T;
 
-        // Calculate the number of elements
-        size_t size = bytes / sizeof(T);
+        size_t items = bytes / sizeof(T);
 
         static constexpr bool debug_synchronous = false;
 
         // Generate data
         const auto           random_range = limit_random_range<T>(1, 100);
         const std::vector<T> input
-            = get_random_data<T>(size, random_range.first, random_range.second, seed.get_0());
+            = get_random_data<T>(items, random_range.first, random_range.second, seed);
 
         common::device_ptr<T>           d_input(input);
-        common::device_ptr<output_type> d_output(size);
+        common::device_ptr<output_type> d_output(items);
 
         if constexpr(IsBinary)
         {
             const std::vector<T> input2
-                = get_random_data<T>(size, random_range.first, random_range.second, seed.get_0());
+                = get_random_data<T>(items, random_range.first, random_range.second, seed);
             common::device_ptr<T> d_input2(input2);
 
             // If it is not a unary operator, it can not make use of the pointer optimization.
@@ -109,14 +133,16 @@ struct device_transform_benchmark : public benchmark_utils::autotune_interface
                 auto transform_op = [](T v1, T v2) { return v1 + v2; };
                 return rocprim::transform<Config>(rocprim::tuple(d_input.get(), d_input2.get()),
                                                   d_output.get(),
-                                                  size,
+                                                  items,
                                                   transform_op,
                                                   stream,
                                                   debug_synchronous);
             };
 
+            state.set_items(items);
+            state.add_reads<T>(2 * items);
+
             state.run([&] { HIP_CHECK(launch()); });
-            state.set_throughput(size, sizeof(T) + sizeof(T));
         }
         else
         {
@@ -125,14 +151,16 @@ struct device_transform_benchmark : public benchmark_utils::autotune_interface
                 auto transform_op = [](T v) { return v + T(5); };
                 return rocprim::detail::transform_impl<IsPointer, Config>(d_input.get(),
                                                                           d_output.get(),
-                                                                          size,
+                                                                          items,
                                                                           transform_op,
                                                                           stream,
                                                                           debug_synchronous);
             };
 
+            state.set_items(items);
+            state.add_reads<T>(items);
+
             state.run([&] { HIP_CHECK(launch()); });
-            state.set_throughput(size, sizeof(T));
         }
     }
 };
@@ -147,7 +175,7 @@ struct device_transform_benchmark_generator
         using generated_config = rocprim::
             transform_config<BlockSize, 1 << ItemsPerThread, ROCPRIM_GRID_SIZE_LIMIT, LoadType>;
 
-        void operator()(std::vector<std::unique_ptr<benchmark_utils::autotune_interface>>& storage)
+        void operator()(std::vector<std::unique_ptr<primbench::benchmark_interface>>& storage)
         {
             storage.emplace_back(
                 std::make_unique<
@@ -155,7 +183,7 @@ struct device_transform_benchmark_generator
         }
     };
 
-    static void create(std::vector<std::unique_ptr<benchmark_utils::autotune_interface>>& storage)
+    static void create(std::vector<std::unique_ptr<primbench::benchmark_interface>>& storage)
     {
         static constexpr unsigned int min_items_per_thread = 0;
         static constexpr unsigned int max_items_per_thread = rocprim::Log2<16>::VALUE;
@@ -163,5 +191,3 @@ struct device_transform_benchmark_generator
                         create_ipt>(storage);
     }
 };
-
-#endif // ROCPRIM_BENCHMARK_DEVICE_TRANSFORM_PARALLEL_HPP_

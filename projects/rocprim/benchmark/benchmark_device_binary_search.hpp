@@ -20,8 +20,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef ROCPRIM_BENCHMARK_BINARY_SEARCH_PARALLEL_HPP_
-#define ROCPRIM_BENCHMARK_BINARY_SEARCH_PARALLEL_HPP_
+#pragma once
+
+#include "primbench.hpp"
 
 #include "benchmark_utils.hpp"
 
@@ -31,8 +32,6 @@
 #include <rocprim/device/detail/device_config_helper.hpp>
 #include <rocprim/device/device_binary_search.hpp>
 #include <rocprim/functional.hpp>
-
-#include <benchmark/benchmark.h>
 
 #include <hip/hip_runtime_api.h>
 
@@ -114,16 +113,17 @@ struct dispatch_binary_search_helper<rocprim::default_config>
 };
 
 template<typename Config>
-std::string binary_search_config_name()
+auto config_name()
 {
-    return "{bs:" + std::to_string(Config::block_size)
-           + ",ipt:" + std::to_string(Config::items_per_thread) + "}";
-}
-
-template<>
-inline std::string binary_search_config_name<rocprim::default_config>()
-{
-    return "default_config";
+    if constexpr(std::is_same_v<Config, rocprim::default_config>)
+    {
+        return std::string("default");
+    }
+    else
+    {
+        auto config = Config();
+        return primbench::json{}.add("bs", config.block_size).add("ipt", config.items_per_thread);
+    }
 }
 
 template<typename SubAlgorithm,
@@ -132,17 +132,22 @@ template<typename SubAlgorithm,
          size_t K,
          bool   SortedNeedles,
          typename Config = rocprim::default_config>
-struct device_binary_search_benchmark : public benchmark_utils::autotune_interface
+struct device_binary_search_benchmark : public primbench::benchmark_interface
 {
-    std::string name() const override
+    primbench::json meta() const override
     {
-        return bench_naming::format_name("{lvl:device,algo:" + SubAlgorithm{}.name()
-                                         + ",value_type:" + std::string(Traits<T>::name())
-                                         + ",output_type:" + std::string(Traits<OutputType>::name())
-                                         + ",cfg:" + binary_search_config_name<Config>() + "}");
+        return primbench::json{}
+            .add("lvl", "device")
+            .add("algo", "device_binary_search")
+            .add("subalgo", SubAlgorithm{}.name())
+            .add("key_type", primbench::name<T>())
+            .add("output_type", primbench::name<OutputType>())
+            .add("needles_percent", K)
+            .add("sorted_needles", SortedNeedles)
+            .add("cfg", config_name<Config>());
     }
 
-    void run(benchmark_utils::state&& state) override
+    void run(primbench::state& state) override
     {
         const auto& bytes  = state.bytes;
         const auto& seed   = state.seed;
@@ -153,22 +158,19 @@ struct device_binary_search_benchmark : public benchmark_utils::autotune_interfa
         using compare_op_type = typename std::
             conditional<std::is_same<T, rocprim::half>::value, half_less, rocprim::less<T>>::type;
 
-        // Calculate the number of elements from byte size
-        size_t haystack_size = bytes / sizeof(T);
-        size_t needles_size  = needles_bytes / sizeof(T);
+        size_t haystack_items = bytes / sizeof(T);
+        size_t needles_items  = needles_bytes / sizeof(T);
 
         compare_op_type compare_op;
 
         // Generate data
-        std::vector<T> haystack(haystack_size);
+        std::vector<T> haystack(haystack_items);
         std::iota(haystack.begin(), haystack.end(), 0);
 
-        const auto random_range = limit_random_range<T>(0, haystack_size);
+        const auto random_range = limit_random_range<T>(0, haystack_items);
 
-        std::vector<T> needles = get_random_data<T>(needles_size,
-                                                    random_range.first,
-                                                    random_range.second,
-                                                    seed.get_0());
+        std::vector<T> needles
+            = get_random_data<T>(needles_items, random_range.first, random_range.second, seed);
         if(SortedNeedles)
         {
             std::sort(needles.begin(), needles.end(), compare_op);
@@ -176,7 +178,7 @@ struct device_binary_search_benchmark : public benchmark_utils::autotune_interfa
 
         common::device_ptr<T>          d_haystack(haystack);
         common::device_ptr<T>          d_needles(needles);
-        common::device_ptr<OutputType> d_output(needles_size);
+        common::device_ptr<OutputType> d_output(needles_items);
 
         size_t temporary_storage_bytes;
         auto   dispatch_helper = dispatch_binary_search_helper<Config>();
@@ -186,12 +188,15 @@ struct device_binary_search_benchmark : public benchmark_utils::autotune_interfa
                                                          d_haystack.get(),
                                                          d_needles.get(),
                                                          d_output.get(),
-                                                         haystack_size,
-                                                         needles_size,
+                                                         haystack_items,
+                                                         needles_items,
                                                          compare_op,
                                                          stream));
 
         common::device_ptr<void> d_temporary_storage(temporary_storage_bytes);
+
+        state.set_items(needles_items);
+        state.add_reads<T>(needles_items);
 
         state.run(
             [&]
@@ -202,14 +207,10 @@ struct device_binary_search_benchmark : public benchmark_utils::autotune_interfa
                                                                  d_haystack.get(),
                                                                  d_needles.get(),
                                                                  d_output.get(),
-                                                                 haystack_size,
-                                                                 needles_size,
+                                                                 haystack_items,
+                                                                 needles_items,
                                                                  compare_op,
                                                                  stream));
             });
-
-        state.set_throughput(needles_size, sizeof(T));
     }
 };
-
-#endif // ROCPRIM_BENCHMARK_BINARY_SEARCH_PARALLEL_HPP_

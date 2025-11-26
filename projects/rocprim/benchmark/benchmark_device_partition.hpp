@@ -20,17 +20,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef ROCPRIM_BENCHMARK_DEVICE_PARTITION_PARALLEL_HPP_
-#define ROCPRIM_BENCHMARK_DEVICE_PARTITION_PARALLEL_HPP_
+#pragma once
+
+#include "primbench.hpp"
 
 #include "benchmark_utils.hpp"
 
 #include "../common/utils_data_generation.hpp"
 #include "../common/utils_device_ptr.hpp"
-
-#include "cmdparser.hpp"
-
-#include <benchmark/benchmark.h>
 
 #include <hip/hip_runtime.h>
 
@@ -120,36 +117,55 @@ inline const char* get_probability_name(partition_three_way_probability probabil
     return "invalid";
 }
 
+template<typename Config>
+auto config_name()
+{
+    if constexpr(std::is_same_v<Config, rocprim::default_config>)
+    {
+        return std::string("default");
+    }
+    else
+    {
+        auto config = Config();
+        return primbench::json{}
+            .add("bs", config.kernel_config.block_size)
+            .add("ipt", config.kernel_config.items_per_thread);
+    }
+}
+
 template<typename DataType,
          typename Config                   = rocprim::default_config,
          typename FlagType                 = char,
          partition_probability Probability = partition_probability::tuning>
-struct device_partition_flag_benchmark : public benchmark_utils::autotune_interface
+struct device_partition_flag_benchmark : public primbench::benchmark_interface
 {
-    std::string name() const override
+    primbench::json meta() const override
     {
-        using namespace std::string_literals;
-        return bench_naming::format_name("{lvl:device,algo:partition,subalgo:flag,data_type:"
-                                         + std::string(Traits<DataType>::name())
-                                         + ",flag_type:" + std::string(Traits<FlagType>::name())
-                                         + ",probability:" + get_probability_name(Probability)
-                                         + ",cfg:" + partition_config_name<Config>() + "}");
+        return primbench::json{}
+            .add("lvl", "device")
+            .add("algo", "device_partition")
+            .add("subalgo", "flag")
+            .add("data_type", primbench::name<DataType>())
+            .add("flag_type", primbench::name<FlagType>())
+            .add("probability", get_probability_name(Probability))
+            .add("cfg", config_name<Config>());
     }
 
-    void run(benchmark_utils::state&& state) override
+    void run(primbench::state& state) override
     {
         const auto& stream = state.stream;
         const auto& bytes  = state.bytes;
         const auto& seed   = state.seed;
 
-        // Calculate the number of elements
-        size_t size = bytes / sizeof(DataType);
+        auto seeds = primbench::seeds<2>(seed);
+
+        size_t items = bytes / sizeof(DataType);
 
         std::vector<DataType> input
-            = get_random_data<DataType>(size,
+            = get_random_data<DataType>(items,
                                         common::generate_limits<DataType>::min(),
                                         common::generate_limits<DataType>::max(),
-                                        seed.get_0());
+                                        seeds[0]);
 
         std::vector<FlagType> flags_0;
         std::vector<FlagType> flags_1;
@@ -157,13 +173,13 @@ struct device_partition_flag_benchmark : public benchmark_utils::autotune_interf
 
         if(is_tuning)
         {
-            flags_0 = get_random_data01<FlagType>(size, 0.0f, seed.get_1());
-            flags_1 = get_random_data01<FlagType>(size, 0.5f, seed.get_1());
-            flags_2 = get_random_data01<FlagType>(size, 1.0f, seed.get_1());
+            flags_0 = get_random_data01<FlagType>(items, 0.0f, seeds[1]);
+            flags_1 = get_random_data01<FlagType>(items, 0.5f, seeds[1]);
+            flags_2 = get_random_data01<FlagType>(items, 1.0f, seeds[1]);
         }
         else
         {
-            flags_0 = get_random_data01<FlagType>(size, get_probability(Probability), seed.get_1());
+            flags_0 = get_random_data01<FlagType>(items, get_probability(Probability), seeds[1]);
         }
 
         common::device_ptr<DataType> d_input(input);
@@ -177,7 +193,7 @@ struct device_partition_flag_benchmark : public benchmark_utils::autotune_interf
             d_flags_2.store(flags_2);
         }
 
-        common::device_ptr<DataType> d_output(size);
+        common::device_ptr<DataType> d_output(items);
 
         common::device_ptr<unsigned int> d_selected_count_output(1);
 
@@ -191,7 +207,7 @@ struct device_partition_flag_benchmark : public benchmark_utils::autotune_interf
                                                      d_flags,
                                                      d_output.get(),
                                                      d_selected_count_output.get(),
-                                                     size,
+                                                     items,
                                                      stream));
             };
 
@@ -208,46 +224,49 @@ struct device_partition_flag_benchmark : public benchmark_utils::autotune_interf
         dispatch(nullptr, temp_storage_size_bytes);
         common::device_ptr<void> d_temp_storage(temp_storage_size_bytes);
 
-        state.run([&] { dispatch(d_temp_storage.get(), temp_storage_size_bytes); });
+        state.set_items(items);
+        state.add_reads<DataType>(items);
 
-        state.set_throughput(size, sizeof(DataType));
+        state.run([&] { dispatch(d_temp_storage.get(), temp_storage_size_bytes); });
     }
 
+private:
     static constexpr bool is_tuning = Probability == partition_probability::tuning;
 };
 
 template<typename DataType,
          typename Config                   = rocprim::default_config,
          partition_probability Probability = partition_probability::tuning>
-struct device_partition_predicate_benchmark : public benchmark_utils::autotune_interface
+struct device_partition_predicate_benchmark : public primbench::benchmark_interface
 {
-    std::string name() const override
+    primbench::json meta() const override
     {
-        using namespace std::string_literals;
-        return bench_naming::format_name("{lvl:device,algo:partition,subalgo:predicate,data_type:"
-                                         + std::string(Traits<DataType>::name())
-                                         + ",probability:" + get_probability_name(Probability)
-                                         + ",cfg:" + partition_config_name<Config>() + "}");
+        return primbench::json{}
+            .add("lvl", "device")
+            .add("algo", "device_partition")
+            .add("subalgo", "predicate")
+            .add("data_type", primbench::name<DataType>())
+            .add("probability", get_probability_name(Probability))
+            .add("cfg", config_name<Config>());
     }
 
-    void run(benchmark_utils::state&& state) override
+    void run(primbench::state& state) override
     {
         const auto& stream = state.stream;
         const auto& bytes  = state.bytes;
         const auto& seed   = state.seed;
 
-        // Calculate the number of elements
-        size_t size = bytes / sizeof(DataType);
+        size_t items = bytes / sizeof(DataType);
 
         // all data types can represent [0, 127], -1 so a predicate can select all
-        std::vector<DataType> input = get_random_data<DataType>(size,
+        std::vector<DataType> input = get_random_data<DataType>(items,
                                                                 static_cast<DataType>(0),
                                                                 static_cast<DataType>(126),
-                                                                seed.get_0());
+                                                                seed);
 
         common::device_ptr<DataType> d_input(input);
 
-        common::device_ptr<DataType> d_output(size);
+        common::device_ptr<DataType> d_output(items);
 
         common::device_ptr<unsigned int> d_selected_count_output(1);
 
@@ -262,7 +281,7 @@ struct device_partition_predicate_benchmark : public benchmark_utils::autotune_i
                                                      d_input.get(),
                                                      d_output.get(),
                                                      d_selected_count_output.get(),
-                                                     size,
+                                                     items,
                                                      predicate,
                                                      stream));
             };
@@ -283,13 +302,14 @@ struct device_partition_predicate_benchmark : public benchmark_utils::autotune_i
         size_t temp_storage_size_bytes{};
         dispatch(nullptr, temp_storage_size_bytes);
         common::device_ptr<void> d_temp_storage(temp_storage_size_bytes);
-        HIP_CHECK(hipDeviceSynchronize());
+
+        state.set_items(items);
+        state.add_reads<DataType>(items);
 
         state.run([&] { dispatch(d_temp_storage.get(), temp_storage_size_bytes); });
-
-        state.set_throughput(size, sizeof(DataType));
     }
 
+private:
     static constexpr bool is_tuning = Probability == partition_probability::tuning;
 };
 
@@ -297,32 +317,35 @@ template<typename DataType,
          typename Config                   = rocprim::default_config,
          typename FlagType                 = char,
          partition_probability Probability = partition_probability::tuning>
-struct device_partition_two_way_flag_benchmark : public benchmark_utils::autotune_interface
+struct device_partition_two_way_flag_benchmark : public primbench::benchmark_interface
 {
-    std::string name() const override
+    primbench::json meta() const override
     {
-        using namespace std::string_literals;
-        return bench_naming::format_name(
-            "{lvl:device,algo:partition_two_way,subalgo:flag,data_type:"
-            + std::string(Traits<DataType>::name())
-            + ",flag_type:" + std::string(Traits<FlagType>::name()) + ",probability:"
-            + get_probability_name(Probability) + ",cfg:" + partition_config_name<Config>() + "}");
+        return primbench::json{}
+            .add("lvl", "device")
+            .add("algo", "device_partition")
+            .add("subalgo", "two_way_flag")
+            .add("data_type", primbench::name<DataType>())
+            .add("flag_type", primbench::name<FlagType>())
+            .add("probability", get_probability_name(Probability))
+            .add("cfg", config_name<Config>());
     }
 
-    void run(benchmark_utils::state&& state) override
+    void run(primbench::state& state) override
     {
         const auto& stream = state.stream;
         const auto& bytes  = state.bytes;
         const auto& seed   = state.seed;
 
-        // Calculate the number of elements
-        size_t size = bytes / sizeof(DataType);
+        auto seeds = primbench::seeds<2>(seed);
+
+        size_t items = bytes / sizeof(DataType);
 
         std::vector<DataType> input
-            = get_random_data<DataType>(size,
+            = get_random_data<DataType>(items,
                                         common::generate_limits<DataType>::min(),
                                         common::generate_limits<DataType>::max(),
-                                        seed.get_0());
+                                        seeds[0]);
 
         std::vector<FlagType> flags_0;
         std::vector<FlagType> flags_1;
@@ -330,13 +353,13 @@ struct device_partition_two_way_flag_benchmark : public benchmark_utils::autotun
 
         if(is_tuning)
         {
-            flags_0 = get_random_data01<FlagType>(size, 0.0f, seed.get_1());
-            flags_1 = get_random_data01<FlagType>(size, 0.5f, seed.get_1());
-            flags_2 = get_random_data01<FlagType>(size, 1.0f, seed.get_1());
+            flags_0 = get_random_data01<FlagType>(items, 0.0f, seeds[1]);
+            flags_1 = get_random_data01<FlagType>(items, 0.5f, seeds[1]);
+            flags_2 = get_random_data01<FlagType>(items, 1.0f, seeds[1]);
         }
         else
         {
-            flags_0 = get_random_data01<FlagType>(size, get_probability(Probability), seed.get_1());
+            flags_0 = get_random_data01<FlagType>(items, get_probability(Probability), seeds[1]);
         }
 
         common::device_ptr<DataType> d_input(input);
@@ -350,9 +373,9 @@ struct device_partition_two_way_flag_benchmark : public benchmark_utils::autotun
             d_flags_2.store(flags_2);
         }
 
-        common::device_ptr<DataType> d_output_selected(size);
+        common::device_ptr<DataType> d_output_selected(items);
 
-        common::device_ptr<DataType> d_output_rejected(size);
+        common::device_ptr<DataType> d_output_rejected(items);
 
         common::device_ptr<unsigned int> d_selected_count_output(1);
 
@@ -367,7 +390,7 @@ struct device_partition_two_way_flag_benchmark : public benchmark_utils::autotun
                                                              d_output_selected.get(),
                                                              d_output_rejected.get(),
                                                              d_selected_count_output.get(),
-                                                             size,
+                                                             items,
                                                              stream));
             };
 
@@ -384,48 +407,51 @@ struct device_partition_two_way_flag_benchmark : public benchmark_utils::autotun
         dispatch(nullptr, temp_storage_size_bytes);
         common::device_ptr<void> d_temp_storage(temp_storage_size_bytes);
 
-        state.run([&] { dispatch(d_temp_storage.get(), temp_storage_size_bytes); });
+        state.set_items(items);
+        state.add_reads<DataType>(items);
 
-        state.set_throughput(size, sizeof(DataType));
+        state.run([&] { dispatch(d_temp_storage.get(), temp_storage_size_bytes); });
     }
 
+private:
     static constexpr bool is_tuning = Probability == partition_probability::tuning;
 };
 
 template<typename DataType,
          typename Config                   = rocprim::default_config,
          partition_probability Probability = partition_probability::tuning>
-struct device_partition_two_way_predicate_benchmark : public benchmark_utils::autotune_interface
+struct device_partition_two_way_predicate_benchmark : public primbench::benchmark_interface
 {
-    std::string name() const override
+    primbench::json meta() const override
     {
-        using namespace std::string_literals;
-        return bench_naming::format_name(
-            "{lvl:device,algo:partition_two_way,subalgo:predicate,data_type:"
-            + std::string(Traits<DataType>::name()) + ",probability:"
-            + get_probability_name(Probability) + ",cfg:" + partition_config_name<Config>() + "}");
+        return primbench::json{}
+            .add("lvl", "device")
+            .add("algo", "device_partition")
+            .add("subalgo", "two_way_predicate")
+            .add("data_type", primbench::name<DataType>())
+            .add("probability", get_probability_name(Probability))
+            .add("cfg", config_name<Config>());
     }
 
-    void run(benchmark_utils::state&& state) override
+    void run(primbench::state& state) override
     {
         const auto& stream = state.stream;
         const auto& bytes  = state.bytes;
         const auto& seed   = state.seed;
 
-        // Calculate the number of elements
-        size_t size = bytes / sizeof(DataType);
+        size_t items = bytes / sizeof(DataType);
 
         // all data types can represent [0, 127], -1 so a predicate can select all
-        std::vector<DataType> input = get_random_data<DataType>(size,
+        std::vector<DataType> input = get_random_data<DataType>(items,
                                                                 static_cast<DataType>(0),
                                                                 static_cast<DataType>(126),
-                                                                seed.get_0());
+                                                                seed);
 
         common::device_ptr<DataType> d_input(input);
 
-        common::device_ptr<DataType> d_output_selected(size);
+        common::device_ptr<DataType> d_output_selected(items);
 
-        common::device_ptr<DataType> d_output_rejected(size);
+        common::device_ptr<DataType> d_output_rejected(items);
 
         common::device_ptr<unsigned int> d_selected_count_output(1);
 
@@ -441,7 +467,7 @@ struct device_partition_two_way_predicate_benchmark : public benchmark_utils::au
                                                              d_output_selected.get(),
                                                              d_output_rejected.get(),
                                                              d_selected_count_output.get(),
-                                                             size,
+                                                             items,
                                                              predicate,
                                                              stream));
             };
@@ -463,50 +489,53 @@ struct device_partition_two_way_predicate_benchmark : public benchmark_utils::au
         dispatch(nullptr, temp_storage_size_bytes);
         common::device_ptr<void> d_temp_storage(temp_storage_size_bytes);
 
-        state.run([&] { dispatch(d_temp_storage.get(), temp_storage_size_bytes); });
+        state.set_items(items);
+        state.add_reads<DataType>(items);
 
-        state.set_throughput(size, sizeof(DataType));
+        state.run([&] { dispatch(d_temp_storage.get(), temp_storage_size_bytes); });
     }
 
+private:
     static constexpr bool is_tuning = Probability == partition_probability::tuning;
 };
 
 template<typename DataType,
          typename Config                             = rocprim::default_config,
          partition_three_way_probability Probability = partition_three_way_probability::tuning>
-struct device_partition_three_way_benchmark : public benchmark_utils::autotune_interface
+struct device_partition_three_way_benchmark : public primbench::benchmark_interface
 {
-    std::string name() const override
+    primbench::json meta() const override
     {
-        using namespace std::string_literals;
-        return bench_naming::format_name("{lvl:device,algo:partition_three_way,data_type:"
-                                         + std::string(Traits<DataType>::name())
-                                         + ",probability:" + get_probability_name(Probability)
-                                         + ",cfg:" + partition_config_name<Config>() + "}");
+        return primbench::json{}
+            .add("lvl", "device")
+            .add("algo", "device_partition")
+            .add("subalgo", "three_way")
+            .add("data_type", primbench::name<DataType>())
+            .add("probability", get_probability_name(Probability))
+            .add("cfg", config_name<Config>());
     }
 
-    void run(benchmark_utils::state&& state) override
+    void run(primbench::state& state) override
     {
         const auto& stream = state.stream;
         const auto& bytes  = state.bytes;
         const auto& seed   = state.seed;
 
-        // Calculate the number of elements
-        size_t size = bytes / sizeof(DataType);
+        size_t items = bytes / sizeof(DataType);
 
         // all data types can represent [0, 127], -1 so a predicate can select all
-        std::vector<DataType> input = get_random_data<DataType>(size,
+        std::vector<DataType> input = get_random_data<DataType>(items,
                                                                 static_cast<DataType>(0),
                                                                 static_cast<DataType>(126),
-                                                                seed.get_0());
+                                                                seed);
 
         common::device_ptr<DataType> d_input(input);
 
-        common::device_ptr<DataType> d_output_first(size);
+        common::device_ptr<DataType> d_output_first(items);
 
-        common::device_ptr<DataType> d_output_second(size);
+        common::device_ptr<DataType> d_output_second(items);
 
-        common::device_ptr<DataType> d_output_unselected(size);
+        common::device_ptr<DataType> d_output_unselected(items);
 
         common::device_ptr<unsigned int> d_selected_count_output(2);
 
@@ -528,7 +557,7 @@ struct device_partition_three_way_benchmark : public benchmark_utils::autotune_i
                                                                d_output_second.get(),
                                                                d_output_unselected.get(),
                                                                d_selected_count_output.get(),
-                                                               size,
+                                                               items,
                                                                predicate_one,
                                                                predicate_two,
                                                                stream));
@@ -563,11 +592,13 @@ struct device_partition_three_way_benchmark : public benchmark_utils::autotune_i
         dispatch(nullptr, temp_storage_size_bytes);
         common::device_ptr<void> d_temp_storage(temp_storage_size_bytes);
 
-        state.run([&] { dispatch(d_temp_storage.get(), temp_storage_size_bytes); });
+        state.set_items(items);
+        state.add_reads<DataType>(items);
 
-        state.set_throughput(size, sizeof(DataType));
+        state.run([&] { dispatch(d_temp_storage.get(), temp_storage_size_bytes); });
     }
 
+private:
     static constexpr bool is_tuning = Probability == partition_three_way_probability::tuning;
 };
 
@@ -579,7 +610,7 @@ struct device_partition_benchmark_generator
     template<int ItemsPerThread>
     struct create_ipt
     {
-        void operator()(std::vector<std::unique_ptr<benchmark_utils::autotune_interface>>& storage)
+        void operator()(std::vector<std::unique_ptr<primbench::benchmark_interface>>& storage)
         {
             using config = rocprim::select_config<BlockSize, ItemsPerThread>;
             storage.emplace_back(
@@ -595,7 +626,7 @@ struct device_partition_benchmark_generator
         }
     };
 
-    static void create(std::vector<std::unique_ptr<benchmark_utils::autotune_interface>>& storage)
+    static void create(std::vector<std::unique_ptr<primbench::benchmark_interface>>& storage)
     {
         static constexpr int max_items_per_thread = std::min(64 / sizeof(DataType), size_t{32});
         static_for_each<make_index_range<int, 4, max_items_per_thread>, create_ipt>(storage);
@@ -603,5 +634,3 @@ struct device_partition_benchmark_generator
 };
 
 #endif // BENCHMARK_CONFIG_TUNING
-
-#endif // ROCPRIM_BENCHMARK_DEVICE_PARTITION_PARALLEL_HPP_
