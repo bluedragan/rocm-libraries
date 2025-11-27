@@ -20,6 +20,7 @@
 # CTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ################################################################################
 
+from dataclasses import dataclass
 from rocisa.code import KernelBody, Label, Macro, Module, RegSet, SrdUpperValue, \
                         StructuredModule, TextBlock, ValueEndif, ValueIf, ValueElseIf, ValueSet, SignatureBase
 from rocisa.container import vgpr, sgpr, SMEMModifiers, replaceHolder, EXEC,\
@@ -41,12 +42,12 @@ from copy import deepcopy
 from typing import Dict
 
 
-def verifyLRsDoneInTime(scheduleInfo: 'ScheduleInfo', context: dict) -> tuple[bool, str]:
+def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[bool, str]:
     """
     Ensure that the A and B data needed for VMFA at index=i is guaranteed to be done before index=i.
     """
     from Tensile.SolutionStructs import Solution
-    numVMFMA = scheduleInfo.numMfma
+    numVMFMA = schedule_info.numMfma
     halfwayPoint = numVMFMA // 2
 
     kernel: Solution = context["kernel"]
@@ -59,37 +60,78 @@ def verifyLRsDoneInTime(scheduleInfo: 'ScheduleInfo', context: dict) -> tuple[bo
     n_tiles_per_LRA = nTilesA / nLRA
     n_tiles_per_LRB = nTilesB / nLRB
 
-
-    def get(name, simd):
-        l = scheduleInfo.optSchedule[name]
-        return l[0] if len(l) == 1 else l[simd]
+    # Note: this is based on the current bahaviour where we iterate through A faster than B.
+    def index_LRA_needed_by_mfma(LRA_idx: int, offset: int) -> int:
+        return int(LRA_idx * n_tiles_per_LRA) + offset
     
-    def verifyLRDoneInTimeSIMD(scheduleInfo: 'ScheduleInfo', context: dict, codePath: int) -> tuple[bool, str]:    
-        # Find when the last LRA0 and LRB0 are issued.
-        lastLRA0 = get("LRA0", codePath)[-1]
-        lastLRB0 = get("LRB0", codePath)[-1]
+    def index_LRB_needed_by_mfma(LRB_idx: int, offset: int) -> int:
+        return nTilesA * int(LRB_idx * n_tiles_per_LRB) + offset
 
-        if lastLRA0 >= halfwayPoint or lastLRB0 >= halfwayPoint:
-            return False, f"LRA0 or LRB0 not done in time for code path {codePath}. lastLRA0={lastLRA0}, lastLRB0={lastLRB0}, halfwayPoint={halfwayPoint}"
+    @dataclass
+    class LocalRead:
+        name: str
+        issued_at: int
+        needed_by: int
+        guaranteed_by: int | float = float('inf')
 
-        # Check all SWaitCnt in the first half to make sure one of them goes to 0.
-        good = False
-        for idx, sync in zip(get("SYNC", codePath), scheduleInfo.syncCode):
-            if idx >= halfwayPoint:
-                break
+        def isValid(self) -> bool:
+            # Needs to be guaranteed BEFORE the index at which it's needed since the 
+            # SWaitCnt is issued AFTER the vmfma.
+            return self.guaranteed_by < self.needed_by
+
+    def get(name: str, code_path: int) -> list[list[int] ]:
+        l = schedule_info.optSchedule[name]
+        return l[0] if len(l) == 1 else l[code_path]
+    
+    def verify(schedule_info: 'ScheduleInfo', code_path: int) -> tuple[bool, str]:
+        # 0. Checks
+        # Note: Order must not be changed, its based on the order in which the LR instructions are included in the assembly.
+        implemented_names = ["LRA0", "LRB0", "LRA1", "LRB1"]
+        LR_names = [name for name in schedule_info.optSchedule.keys() if name.startswith("LR")]
+        assert all(name in implemented_names for name in LR_names), f"LocalReads {LR_names} not implemented"
+
+        LR_names.sort(key=lambda x: implemented_names.index(x))
+        
+        # 1. Find all localreads and place in timeline
+        schedule = [[] for _ in range(schedule_info.numMfma)]
+        for name in LR_names:            
+            offset = halfwayPoint if "0" in name else numVMFMA
+            needed_by = index_LRA_needed_by_mfma if name.startswith("LRA") else index_LRB_needed_by_mfma
+
+            for idx_LR, idx_VMFMA in enumerate(get(name, code_path)):
+                LR = LocalRead(name=name, issued_at=idx_VMFMA, needed_by=needed_by(idx_LR, offset))
+                schedule[idx_VMFMA].append(LR)
+
+        # 2. Traverse timeline and apply effect of SWaitCnts
+        for idx, sync in zip(get("SYNC", code_path), schedule_info.syncCode):
             if not isinstance(sync, SWaitCnt):
                 continue
-            if idx < max(lastLRA0, lastLRB0):
-                continue 
-            if sync.dscnt == 0:
-                good = True
-                break
-        if not good:
-            return False, f"No SWaitCnt of 0 in the first half goes to 0 for code path {codePath} after LRA0 and LRB0 are done"
+            cnt = sync.dscnt
+            # Deal with those issued in this loop iteration i in [0, idx).
+            for i in range(idx-1, -1, -1):
+                for LR in reversed(schedule[i]):
+                    if cnt > 0:
+                        # Skip the first cnt LRs since the SWaitCnt doesn't apply to them
+                        cnt -= 1
+                        continue
+                    LR.guaranteed_by = min(LR.guaranteed_by, idx)
+            # Deal with those issued in previous loop iterations in [idx, numVMFMA).
+            for i in range(numVMFMA-1, idx+1, -1):
+                for LR in reversed(schedule[i]):
+                    if cnt > 0:
+                        # Skip the first cnt LRs since the SWaitCnt doesn't apply to them
+                        cnt -= 1
+                        continue
+                    LR.guaranteed_by = min(LR.guaranteed_by, idx + numVMFMA)
+        # Validate
+        for LRs in schedule:
+            for LR in LRs:
+                if not LR.isValid():
+                    return False, f"{LR.name} at index {LR.issued_at} is not valid. Needed by index {LR.needed_by}, but only guaranteed by index {LR.guaranteed_by}."
         return True, ""
     
-    for i in range(scheduleInfo.numCodePaths):
-        status, message = verifyLRDoneInTimeSIMD(scheduleInfo, context, i)
+    for code_path in range(schedule_info.numCodePaths):
+        status, message = verify(schedule_info, code_path)
         if status is False:
             return False, message
     return True, ""
