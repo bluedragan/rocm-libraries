@@ -127,7 +127,8 @@ void simpleGemm(hipblasLtHandle_t  handle,
                 void*              d_workspace,
                 int64_t            max_workspace_size,
                 hipStream_t        stream,
-                int                requested_solutions);
+                int                requested_solutions,
+                int&               returned_solutions);
 
 void simpleGemmExt(hipblasLtHandle_t  handle,
                    hipblasOperation_t trans_a,
@@ -145,7 +146,8 @@ void simpleGemmExt(hipblasLtHandle_t  handle,
                    void*              d_workspace,
                    int64_t            max_workspace_size,
                    hipStream_t        stream,
-                   int                requested_solutions);
+                   int                requested_solutions,
+                   int&               returned_solutions);
 
 void simpleGemmGetAllAlgosExt(hipblasLtHandle_t  handle,
                               hipblasOperation_t trans_a,
@@ -162,7 +164,8 @@ void simpleGemmGetAllAlgosExt(hipblasLtHandle_t  handle,
                               void*              d_d,
                               void*              d_workspace,
                               int64_t            max_workspace_size,
-                              hipStream_t        stream);
+                              hipStream_t        stream,
+                              int&               returned_solutions);
 
 void simpleGemmGetAlgoByIndexExt(hipblasLtHandle_t  handle,
                                  hipblasOperation_t trans_a,
@@ -179,12 +182,13 @@ void simpleGemmGetAlgoByIndexExt(hipblasLtHandle_t  handle,
                                  void*              d_d,
                                  void*              d_workspace,
                                  int64_t            max_workspace_size,
-                                 hipStream_t        stream);
+                                 hipStream_t        stream,
+                                 int&               returned_solutions);
 
-void calcOverheadGetHeuristic(int requested_solutions = 1);
-void calcOverheadExtGetHeuristic(int requested_solutions = 1);
-void calcOverheadExtGetAllAlgos();
-void calcOverheadExtGetAlgoByIdx();
+int calcOverheadGetHeuristic(int requested_solutions = 1);
+int calcOverheadExtGetHeuristic(int requested_solutions = 1);
+int calcOverheadExtGetAllAlgos();
+int calcOverheadExtGetAlgoByIdx();
 
 int main(int argc, char** argv)
 {
@@ -194,48 +198,54 @@ int main(int argc, char** argv)
         return err;
     }
 
-    std::cout << "[overhead]:function,api_name,us/iter,best_us\n";
+    int returned_sol;
+
+    std::cout << "[overhead]:function,api_name,num_sols,us/iter,best_us\n";
     // calls hipblasLtMatmul hotIters times
-    calcOverheadGetHeuristic();
-    std::cout << "api_overhead,hipblasLtMatmulAlgoGetHeuristic,"
-              << std::to_string(total_getHeur.count() / hotIters) << ","
+    returned_sol = calcOverheadGetHeuristic();
+    std::cout << "api_overhead,hipblasLtMatmulAlgoGetHeuristic," << std::to_string(returned_sol)
+              << "," << std::to_string(total_getHeur.count() / hotIters) << ","
               << std::to_string(best_getHeur.count()) << std::endl;
 
     // calls ext::run hotIters times
-    calcOverheadExtGetHeuristic();
-    std::cout << "api_overhead,hipblaslt_ext::algoGetHeuristic,"
-              << std::to_string(total_ext_getHeur.count() / hotIters) << ","
+    returned_sol = calcOverheadExtGetHeuristic();
+    std::cout << "api_overhead,hipblaslt_ext::algoGetHeuristic," << std::to_string(returned_sol)
+              << "," << std::to_string(total_ext_getHeur.count() / hotIters) << ","
               << std::to_string(best_ext_getHeur.count()) << std::endl;
 
     // won't calls ext::run, and note that the hot iter is getAllIters
-    calcOverheadExtGetAllAlgos();
-    std::cout << "api_overhead,hipblaslt_ext::getAllAlgos,"
+    returned_sol = calcOverheadExtGetAllAlgos();
+    std::cout << "api_overhead,hipblaslt_ext::getAllAlgos," << std::to_string(returned_sol) << ","
               << std::to_string(total_ext_getAll.count() / getAllIters) << ","
               << std::to_string(best_ext_getAll.count()) << std::endl;
 
     // calls ext::run hotIters times
-    calcOverheadExtGetAlgoByIdx();
-    std::cout << "api_overhead,hipblaslt_ext::getAlgosFromIndex,"
-              << std::to_string(total_ext_getByIdx.count() / hotIters) << ","
+    returned_sol = calcOverheadExtGetAlgoByIdx();
+    std::cout << "api_overhead,hipblaslt_ext::getAlgosFromIndex," << std::to_string(returned_sol)
+              << "," << std::to_string(total_ext_getByIdx.count() / hotIters) << ","
               << std::to_string(best_ext_getByIdx.count()) << std::endl;
 
     // new: get heuristic with requested-solution = -1
     int requested_solutions = -1;
     // won't calls hipblasLtMatmul if requested_solutions != 1, and note that the hot iter is getAllIters
-    calcOverheadGetHeuristic(requested_solutions);
+    returned_sol = calcOverheadGetHeuristic(requested_solutions);
     std::cout << "api_overhead,hipblasLtMatmulAlgoGetHeuristic[Neg1],"
+              << std::to_string(returned_sol) << ","
               << std::to_string(total_getHeurNeg1.count() / getAllIters) << ","
               << std::to_string(best_getHeurNeg1.count()) << std::endl;
     // won't calls ext::run if requested_solutions != 1, and note that the hot iter is getAllIters
-    calcOverheadExtGetHeuristic(requested_solutions);
+    returned_sol = calcOverheadExtGetHeuristic(requested_solutions);
     std::cout << "api_overhead,hipblaslt_ext::algoGetHeuristic[Neg1],"
+              << std::to_string(returned_sol) << ","
               << std::to_string(total_ext_getHeurNeg1.count() / getAllIters) << ","
               << std::to_string(best_ext_getHeurNeg1.count()) << std::endl;
 
     // put matmul exec time in the end
-    std::cout << "api_overhead,hipblasLtMatmul," << std::to_string(total_matmul.count() / hotIters)
-              << "," << std::to_string(best_matmul.count()) << std::endl;
-    std::cout << "api_overhead,hipblaslt_ext::run,"
+    returned_sol = 0;
+    std::cout << "api_overhead,hipblasLtMatmul," << std::to_string(returned_sol) << ","
+              << std::to_string(total_matmul.count() / hotIters) << ","
+              << std::to_string(best_matmul.count()) << std::endl;
+    std::cout << "api_overhead,hipblaslt_ext::run," << std::to_string(returned_sol) << ","
               << std::to_string(total_run.count() / (hotIters * 2)) << ","
               << std::to_string(best_run.count()) << std::endl;
 
@@ -245,12 +255,13 @@ int main(int argc, char** argv)
 /////////////////////////////////////////
 // hipBLASLt GetHeuristic & MatMul
 /////////////////////////////////////////
-void calcOverheadGetHeuristic(int requested_solutions)
+int calcOverheadGetHeuristic(int requested_solutions)
 {
     requested_solutions
         = requested_solutions < 0 ? HIPBLASLT_MAX_REQUESTED_SOLUTION_NUM : requested_solutions;
 
     HHSRunner runner(1024, 512, 1024, 1, 1.f, 1.f, 32 * 1024 * 1024);
+    int       returned_sols = 0;
     runner.run([&] {
         simpleGemm(runner.handle,
                    HIPBLAS_OP_N,
@@ -268,8 +279,11 @@ void calcOverheadGetHeuristic(int requested_solutions)
                    runner.d_workspace,
                    runner.max_workspace_size,
                    runner.stream,
-                   requested_solutions);
+                   requested_solutions,
+                   returned_sols);
     });
+
+    return returned_sols;
 }
 
 void simpleGemm(hipblasLtHandle_t  handle,
@@ -288,7 +302,8 @@ void simpleGemm(hipblasLtHandle_t  handle,
                 void*              d_workspace,
                 int64_t            max_workspace_size,
                 hipStream_t        stream,
-                int                requested_solutions)
+                int                requested_solutions,
+                int&               returned_solutions)
 {
     hipblasLtMatrixLayout_t matA, matB, matC, matD;
     CHECK_HIPBLASLT_ERROR(hipblasLtMatrixLayoutCreate(&matA, HIP_R_16F, m, k, m));
@@ -367,6 +382,7 @@ void simpleGemm(hipblasLtHandle_t  handle,
                                                               heuristicResult.data(),
                                                               &returnedAlgoCount));
 
+        returned_solutions = returnedAlgoCount;
         if(returnedAlgoCount == 0)
         {
             std::cerr << "No valid solution found!" << std::endl;
@@ -435,6 +451,7 @@ void simpleGemm(hipblasLtHandle_t  handle,
             total_getHeurNeg1 += duration;
         }
 
+        returned_solutions = returnedAlgoCount;
         if(returnedAlgoCount == 0)
         {
             std::cerr << "No valid solution found!" << std::endl;
@@ -480,12 +497,13 @@ void simpleGemm(hipblasLtHandle_t  handle,
 /////////////////////////////////////////
 // hipBLASLt_ext - algoGetHeuristic & run
 /////////////////////////////////////////
-void calcOverheadExtGetHeuristic(int requested_solutions)
+int calcOverheadExtGetHeuristic(int requested_solutions)
 {
     requested_solutions
         = requested_solutions < 0 ? HIPBLASLT_MAX_REQUESTED_SOLUTION_NUM : requested_solutions;
 
     HHSRunner runner(1024, 512, 1024, 1, 1.f, 1.f, 32 * 1024 * 1024);
+    int       returned_sols = 0;
     runner.run([&] {
         simpleGemmExt(runner.handle,
                       HIPBLAS_OP_N,
@@ -503,8 +521,11 @@ void calcOverheadExtGetHeuristic(int requested_solutions)
                       runner.d_workspace,
                       runner.max_workspace_size,
                       runner.stream,
-                      requested_solutions);
+                      requested_solutions,
+                      returned_sols);
     });
+
+    return returned_sols;
 }
 
 void simpleGemmExt(hipblasLtHandle_t  handle,
@@ -523,7 +544,8 @@ void simpleGemmExt(hipblasLtHandle_t  handle,
                    void*              d_workspace,
                    int64_t            max_workspace_size,
                    hipStream_t        stream,
-                   int                requested_solutions)
+                   int                requested_solutions,
+                   int&               returned_solutions)
 {
     hipblaslt_ext::GemmPreference gemmPref;
     gemmPref.setMaxWorkspaceBytes(max_workspace_size);
@@ -550,6 +572,7 @@ void simpleGemmExt(hipblasLtHandle_t  handle,
         CHECK_HIPBLASLT_ERROR(
             gemm.algoGetHeuristic(requested_solutions, gemmPref, heuristicResult));
 
+        returned_solutions = heuristicResult.size();
         if(heuristicResult.empty())
         {
             std::cerr << "[GemmExt]:No valid solution found!" << std::endl;
@@ -593,6 +616,7 @@ void simpleGemmExt(hipblasLtHandle_t  handle,
             total_ext_getHeurNeg1 += duration;
         }
 
+        returned_solutions = heuristicResult.size();
         if(heuristicResult.empty())
         {
             std::cerr << "[GemmExt]:No valid solution found!" << std::endl;
@@ -623,10 +647,11 @@ void simpleGemmExt(hipblasLtHandle_t  handle,
 /////////////////////////////////////////
 // hipBLASLt_ext - getAllAlgos & run
 /////////////////////////////////////////
-void calcOverheadExtGetAllAlgos()
+int calcOverheadExtGetAllAlgos()
 {
     HHSRunner runner(1024, 512, 1024, 1, 1.f, 1.f, 32 * 1024 * 1024);
-    runner.run([&runner] {
+    int       returned_sols = 0;
+    runner.run([&] {
         simpleGemmGetAllAlgosExt(runner.handle,
                                  HIPBLAS_OP_N,
                                  HIPBLAS_OP_N,
@@ -642,8 +667,11 @@ void calcOverheadExtGetAllAlgos()
                                  runner.d_d,
                                  runner.d_workspace,
                                  runner.max_workspace_size,
-                                 runner.stream);
+                                 runner.stream,
+                                 returned_sols);
     });
+
+    return returned_sols;
 }
 
 void simpleGemmGetAllAlgosExt(hipblasLtHandle_t  handle,
@@ -661,7 +689,8 @@ void simpleGemmGetAllAlgosExt(hipblasLtHandle_t  handle,
                               void*              d_d,
                               void*              d_workspace,
                               int64_t            max_workspace_size,
-                              hipStream_t        stream)
+                              hipStream_t        stream,
+                              int&               returned_solutions)
 {
     hipblaslt_ext::GemmPreference gemmPref;
     gemmPref.setMaxWorkspaceBytes(max_workspace_size);
@@ -711,6 +740,7 @@ void simpleGemmGetAllAlgosExt(hipblasLtHandle_t  handle,
             }
         }
 
+        returned_solutions = validIdx.size();
         if(validIdx.empty())
         {
             std::cerr << "[GetAllAlgosExt]:No valid solution found!" << std::endl;
@@ -742,6 +772,29 @@ void simpleGemmGetAllAlgosExt(hipblasLtHandle_t  handle,
         double_micro duration = end_ext_getAll - start_ext_getAll;
         best_ext_getAll       = std::min(best_ext_getAll, duration);
         total_ext_getAll += duration;
+
+        uint64_t            workspace_size = 0;
+        std::vector<size_t> validIdx;
+        for(size_t i = 0; i < heuristicResult.size(); i++)
+        {
+            size_t workspaceSizeInBytes = 0;
+            if(gemm.isAlgoSupported(heuristicResult[i].algo, workspaceSizeInBytes)
+               == HIPBLAS_STATUS_SUCCESS)
+            {
+                if(workspaceSizeInBytes <= max_workspace_size)
+                {
+                    workspace_size = max(workspace_size, workspaceSizeInBytes);
+                    validIdx.push_back(i);
+                }
+            }
+        }
+
+        returned_solutions = validIdx.size();
+        if(validIdx.empty())
+        {
+            std::cerr << "[GetAllAlgosExt]:No valid solution found!" << std::endl;
+            return;
+        }
     }
 
     return;
@@ -750,10 +803,11 @@ void simpleGemmGetAllAlgosExt(hipblasLtHandle_t  handle,
 /////////////////////////////////////////
 // hipBLASLt_ext - getAlgosFromIndex & run
 /////////////////////////////////////////
-void calcOverheadExtGetAlgoByIdx()
+int calcOverheadExtGetAlgoByIdx()
 {
     HHSRunner runner(1024, 512, 1024, 1, 1.f, 1.f, 32 * 1024 * 1024);
-    runner.run([&runner] {
+    int       returned_sols = 0;
+    runner.run([&] {
         simpleGemmGetAlgoByIndexExt(runner.handle,
                                     HIPBLAS_OP_N,
                                     HIPBLAS_OP_N,
@@ -769,8 +823,11 @@ void calcOverheadExtGetAlgoByIdx()
                                     runner.d_d,
                                     runner.d_workspace,
                                     runner.max_workspace_size,
-                                    runner.stream);
+                                    runner.stream,
+                                    returned_sols);
     });
+
+    return returned_sols;
 }
 
 void simpleGemmGetAlgoByIndexExt(hipblasLtHandle_t  handle,
@@ -788,7 +845,8 @@ void simpleGemmGetAlgoByIndexExt(hipblasLtHandle_t  handle,
                                  void*              d_d,
                                  void*              d_workspace,
                                  int64_t            max_workspace_size,
-                                 hipStream_t        stream)
+                                 hipStream_t        stream,
+                                 int&               returned_solutions)
 {
     hipblaslt_ext::GemmPreference gemmPref;
     gemmPref.setMaxWorkspaceBytes(max_workspace_size);
@@ -840,6 +898,7 @@ void simpleGemmGetAlgoByIndexExt(hipblasLtHandle_t  handle,
             }
         }
 
+        returned_solutions = heuristicResult.size();
         if(heuristicResult.empty())
         {
             std::cerr << "[GetAlgoByIndexExt]:No valid solution found!" << std::endl;
@@ -895,6 +954,7 @@ void simpleGemmGetAlgoByIndexExt(hipblasLtHandle_t  handle,
             }
         }
 
+        returned_solutions = heuristicResult.size();
         if(heuristicResult.empty())
         {
             std::cerr << "[GetAlgoByIndexExt]:No valid solution found!" << std::endl;
