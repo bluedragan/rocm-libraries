@@ -14,9 +14,7 @@
 #include <hipdnn_sdk/test_utilities/ReferenceValidationInterface.hpp>
 #include <hipdnn_sdk/utilities/TensorView.hpp>
 
-namespace hipdnn_sdk
-{
-namespace test_utilities
+namespace hipdnn_sdk::test_utilities
 {
 
 // CPU validator that uses MIOpen RMS calculation for comparing tensor likes.
@@ -146,5 +144,4 @@ inline std::unique_ptr<hipdnn_sdk::test_utilities::IReferenceValidation>
     }
 }
 
-} // namespace test_utilities
-} // namespace hipdnn_sdk
+} // namespace hipdnn_sdk::test_utilities

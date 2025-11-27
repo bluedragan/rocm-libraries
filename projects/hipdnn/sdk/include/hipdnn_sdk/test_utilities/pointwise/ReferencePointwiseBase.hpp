@@ -11,9 +11,7 @@
 #include <stdexcept>
 #include <tuple>
 
-namespace hipdnn_sdk
-{
-namespace test_utilities
+namespace hipdnn_sdk::test_utilities
 {
 
 template <class DeviceExecutor, class OutputType, class... InputTypes>
@@ -288,5 +286,4 @@ private:
     }
 };
 
-} // namespace test_utilities
-} // namespace hipdnn_sdk
+} // namespace hipdnn_sdk::test_utilities

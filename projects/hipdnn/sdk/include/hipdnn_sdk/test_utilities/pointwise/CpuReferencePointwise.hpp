@@ -6,9 +6,7 @@
 #include <hipdnn_sdk/test_utilities/pointwise/CpuDeviceExecutor.hpp>
 #include <hipdnn_sdk/test_utilities/pointwise/ReferencePointwiseBase.hpp>
 
-namespace hipdnn_sdk
-{
-namespace test_utilities
+namespace hipdnn_sdk::test_utilities
 {
 
 template <class DeviceExecutor, class OutputType, class... InputTypes>
@@ -38,5 +36,4 @@ using CpuReferencePointwiseImpl
                              OutputType,
                              InputTypes...>;
 
-} // namespace test_utilities
-} // namespace hipdnn_sdk
+} // namespace hipdnn_sdk::test_utilities

@@ -14,9 +14,7 @@
 #include <typeindex>
 #include <vector>
 
-namespace hipdnn_sdk
-{
-namespace utilities
+namespace hipdnn_sdk::utilities
 {
 
 struct TensorLayout
@@ -525,10 +523,9 @@ private:
 template <typename T>
 using PinnedTensor = Tensor<T, PinnedHostAllocator<T>>;
 
-inline std::unique_ptr<utilities::ITensor>
-    createTensor(hipdnn_sdk::data_objects::DataType dataType,
-                 const std::vector<int64_t>& dims,
-                 const std::vector<int64_t>& strides)
+inline std::unique_ptr<utilities::ITensor> createTensor(hipdnn_sdk::data_objects::DataType dataType,
+                                                        const std::vector<int64_t>& dims,
+                                                        const std::vector<int64_t>& strides)
 {
     switch(dataType)
     {
@@ -549,5 +546,4 @@ inline std::unique_ptr<utilities::ITensor>
     }
 }
 
-} // namespace utilities
-} // namespace hipdnn_sdk
+} // namespace hipdnn_sdk::utilities

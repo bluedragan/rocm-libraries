@@ -6,9 +6,7 @@
 #include <bitset>
 #include <hipdnn_sdk/data_objects/pointwise_attributes_generated.h>
 
-namespace hipdnn_sdk
-{
-namespace utilities
+namespace hipdnn_sdk::utilities
 {
 
 // Bitset size based on the maximum PointwiseMode value + 1
@@ -169,5 +167,4 @@ inline bool isImplementedTernaryPointwiseMode(hipdnn_sdk::data_objects::Pointwis
     return false;
 }
 
-} // namespace utilities
-} // namespace hipdnn_sdk
+} // namespace hipdnn_sdk::utilities
