@@ -236,10 +236,11 @@ class TestCustomScheduleValidation:
 
 
     def test_simple_LR0(self):
-        from rocisa.instruction import SWaitCnt, SBarrier
         """
         Verify the simple case where both LRA0 and LRB0 are issued and finished before the halfway point of the main loop.
         """
+        from rocisa.instruction import SWaitCnt
+
         kernel = create_base_kernel()
         
         optSchedule = {
@@ -267,10 +268,11 @@ class TestCustomScheduleValidation:
         assert not status, f"Schedule should have failed, but passed."
 
     def test_simple_LR0_w_LR1(self):
-        from rocisa.instruction import SWaitCnt
         """
         Handle case where we start reading LRA1 before halfway point.
         """
+        from rocisa.instruction import SWaitCnt
+
         kernel = create_base_kernel()
         
         optSchedule = {
@@ -295,10 +297,11 @@ class TestCustomScheduleValidation:
 
     
     def test_complex_LR0(self):
-        from rocisa.instruction import SWaitCnt
         """
         2nd LRB0 is not needed until iteration 6 & 7
         """
+        from rocisa.instruction import SWaitCnt
+
         kernel = create_base_kernel()
 
         optSchedule = {
@@ -317,3 +320,45 @@ class TestCustomScheduleValidation:
         assert status, f"Schedule should have passed validation but did not. {message}"
 
 
+    def test_simple_LR1(self):
+        """
+        Case where LR1 is finished before the end of loop.
+        """
+        from rocisa.instruction import SWaitCnt
+        kernel = create_base_kernel()
+
+        optSchedule = {
+            "SYNC": [[7]],
+            "LRA1": [[4, 4]],
+            "LRB1": [[4, 4]],
+        }
+        syncCode = [
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
+        ]
+        sched = ScheduleInfo(
+            1, 8, optSchedule, syncCode, None, None, None
+        )
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert status, f"Schedule should have passed validation but did not. {message}"
+
+    def test_complex_LR1(self):
+        """
+        Case where LR1 finishes during the beginning of next iteration.
+        """
+        from rocisa.instruction import SWaitCnt
+        kernel = create_base_kernel()
+
+        optSchedule = {
+            "SYNC": [[1, 7]],
+            "LRA1": [[4, 4]],
+            "LRB1": [[4, 4]],
+        }
+        syncCode = [
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="2/2 LRB1"),
+            SWaitCnt(dscnt=1, vlcnt=-1, vscnt=-1, comment="2/2 LRA1 and 1/2 LRB1"),
+        ]
+        sched = ScheduleInfo(
+            1, 8, optSchedule, syncCode, None, None, None
+        )
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert status, f"Schedule should have passed validation but did not. {message}"
