@@ -238,22 +238,21 @@ class TestCustomScheduleValidation:
     def test_simple_LR0(self):
         from rocisa.instruction import SWaitCnt, SBarrier
         """
-        Verify the simple case where both LRA0 and LRB0 are issues and finished before the halfway point of the main loop.
+        Verify the simple case where both LRA0 and LRB0 are issued and finished before the halfway point of the main loop.
         """
         kernel = create_base_kernel()
         
         optSchedule = {
-            "SYNC": [[8, 8]],
-            "LRA0": [[1, 2]],
-            "LRB0": [[3, 4]]
+            "SYNC": [[3]],
+            "LRA0": [[0, 0]],
+            "LRB0": [[0, 0]]
         }
 
         syncCode = [
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
-            SBarrier(comment=""),
         ]
         sched = ScheduleInfo(
-            1, 20, optSchedule, syncCode, None, None, None
+            1, 8, optSchedule, syncCode, None, None, None
         )
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
@@ -268,57 +267,52 @@ class TestCustomScheduleValidation:
         assert not status, f"Schedule should have failed, but passed."
 
     def test_simple_LR0_w_LR1(self):
-        from rocisa.instruction import SWaitCnt, SBarrier
+        from rocisa.instruction import SWaitCnt
         """
-        Verify the simple case where both LRA0 and LRB0 are issues and finished before the halfway point of the main loop.
+        Handle case where we start reading LRA1 before halfway point.
         """
         kernel = create_base_kernel()
         
         optSchedule = {
-            "SYNC": [[8, 8]],
-            "LRA0": [[1, 2]],
-            "LRB0": [[3, 4]],
-            "LRA1": [[5]],
-            # "LRB1": [[7, 10]]
+            "SYNC": [[3]],
+            "LRA0": [[0, 0]],
+            "LRB0": [[0, 0]],
+            "LRA1": [[2]],
         }
         syncCode = [
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
         ]
         sched = ScheduleInfo(
-            1, 20, optSchedule, syncCode, None, None, None
+            1, 8, optSchedule, syncCode, None, None, None
         )
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation 1/2 but did not. {message}"
 
-        syncCode[0].dscnt = 1  # For LRA1
+        # Chaning barrier from 0 to 1 for LRA1 should still pass
+        syncCode[0].dscnt = 1
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation 2/2 but did not. {message}"
 
     
     def test_complex_LR0(self):
-        from rocisa.instruction import SWaitCnt, SBarrier
+        from rocisa.instruction import SWaitCnt
         """
-        Verify the simple case where both LRA0 and LRB0 are issues and finished before the halfway point of the main loop.
+        2nd LRB0 is not needed until iteration 6 & 7
         """
         kernel = create_base_kernel()
 
         optSchedule = {
-            "SYNC": [[8, 8]],
-            "LRA0": [[1, 2]],
-            "LRB0": [[3, 4]],
-            "LRA1": [[5]],
-            # "LRB1": [[7, 10]]
+            "SYNC": [[3, 5]],
+            "LRA0": [[0, 0]],
+            "LRB0": [[0, 4]],  # 2nd LRB0 is n
         }
         syncCode = [
+            SWaitCnt(dscnt=1, vlcnt=-1, vscnt=-1, comment=""),
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
         ]
         sched = ScheduleInfo(
-            1, 20, optSchedule, syncCode, None, None, None
+            1, 8, optSchedule, syncCode, None, None, None
         )
-        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
-        assert status, f"Schedule should have passed validation but did not. {message}"
-
-        syncCode[0].dscnt = 1  # For LRA1
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
 
