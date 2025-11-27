@@ -38,6 +38,10 @@ def create_base_kernel():
         "ForceUnrollSubIter": False,
         "SwapGlobalReadOrder": False, # For asserting it gets set
         "UsePLRPack": False, # For asserting it gets set
+        "NumLoadsA": 1,
+        "NumLoadsB": 1,
+        "MIWaveTileA": 1,
+        "MIWaveTileB": 1,
     }
     return kernel
 
@@ -231,25 +235,91 @@ class TestCustomScheduleValidation:
         assert status == False
 
 
-    def test_simple_LRA0_and_LRB0(self):
+    def test_simple_LR0(self):
         from rocisa.instruction import SWaitCnt, SBarrier
         """
         Verify the simple case where both LRA0 and LRB0 are issues and finished before the halfway point of the main loop.
         """
+        kernel = create_base_kernel()
+        
         optSchedule = {
-            "SYNC": [[5, 5]],
+            "SYNC": [[8, 8]],
             "LRA0": [[1, 2]],
             "LRB0": [[3, 4]]
         }
 
-        syncCode = {
+        syncCode = [
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
             SBarrier(comment=""),
-        }
+        ]
         sched = ScheduleInfo(
-            None, 20, optSchedule, syncCode, None, None, None
+            1, 20, optSchedule, syncCode, None, None, None
         )
-        status, message = verifyLRsDoneInTime(sched, {})
-        # assert status, f"Schedule should have passed validation but did not. {message}"
-        assert not status, "Should not be passing yet."
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert status, f"Schedule should have passed validation but did not. {message}"
+
+        optSchedule["LRA0"] = [[1, 11]]
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert not status, f"Schedule should have failed, but passed."
+
+        optSchedule["LRA0"] = [[1, 2]]
+        optSchedule["LRB0"] = [[3, 15]]
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert not status, f"Schedule should have failed, but passed."
+
+    def test_simple_LR0_w_LR1(self):
+        from rocisa.instruction import SWaitCnt, SBarrier
+        """
+        Verify the simple case where both LRA0 and LRB0 are issues and finished before the halfway point of the main loop.
+        """
+        kernel = create_base_kernel()
+        
+        optSchedule = {
+            "SYNC": [[8, 8]],
+            "LRA0": [[1, 2]],
+            "LRB0": [[3, 4]],
+            "LRA1": [[5]],
+            # "LRB1": [[7, 10]]
+        }
+        syncCode = [
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
+        ]
+        sched = ScheduleInfo(
+            1, 20, optSchedule, syncCode, None, None, None
+        )
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert status, f"Schedule should have passed validation 1/2 but did not. {message}"
+
+        syncCode[0].dscnt = 1  # For LRA1
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert status, f"Schedule should have passed validation 2/2 but did not. {message}"
+
+    
+    def test_complex_LR0(self):
+        from rocisa.instruction import SWaitCnt, SBarrier
+        """
+        Verify the simple case where both LRA0 and LRB0 are issues and finished before the halfway point of the main loop.
+        """
+        kernel = create_base_kernel()
+
+        optSchedule = {
+            "SYNC": [[8, 8]],
+            "LRA0": [[1, 2]],
+            "LRB0": [[3, 4]],
+            "LRA1": [[5]],
+            # "LRB1": [[7, 10]]
+        }
+        syncCode = [
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
+        ]
+        sched = ScheduleInfo(
+            1, 20, optSchedule, syncCode, None, None, None
+        )
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert status, f"Schedule should have passed validation but did not. {message}"
+
+        syncCode[0].dscnt = 1  # For LRA1
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert status, f"Schedule should have passed validation but did not. {message}"
+
 
