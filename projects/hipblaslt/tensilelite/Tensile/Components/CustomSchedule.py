@@ -1430,7 +1430,7 @@ def _get_schedule_96x256x64_16bit(kernel, userLDSTr, TLDS):
             40, SWaitCnt(dscnt=-1, vlcnt=11, vscnt=-1, comment="Wait for GRB"),
             40, SBarrier(comment=""),
             
-            47, SWaitCnt(dscnt=5, vlcnt=-1, vscnt=-1, comment="Wait for LRA1 and 5/8 of LRB1"),
+            47, SWaitCnt(dscnt=5, vlcnt=-1, vscnt=-1, comment="Wait for LRA1 and 3/8 of LRB1"),
             47, SBarrier(comment=""),
         ]
         optSchedule = {
@@ -1463,7 +1463,7 @@ def _get_schedule_96x256x64_16bit(kernel, userLDSTr, TLDS):
             'LCC'    : [[47, 47]],
         }
         syncCode = syncTable[1::2]
-        nglshift = nllshift = 4
+        nglshift = nllshift = 11
     else:
         return False, None
     numMfma = 48
