@@ -447,7 +447,7 @@ class RegisterSchedule:
         @RegisterSchedule(
             tile_config=TileConfig(256, 96, 64, 2, 1, True),
             data_type=is16bit,
-            vector_widths=(8, 8, 8),
+            vector_widths=[8, 8, 8],
             matrix_inst=[16, 16, 32, 1],
             mfma_wave_group=[2, 2]
         )
@@ -455,14 +455,14 @@ class RegisterSchedule:
             ...
     """
     
-    def __init__(self, tile_config: TileConfig, data_type: Callable, vector_widths: tuple[int, int, int], matrix_inst: list[int], mfma_wave_group: list[int]):
+    def __init__(self, tile_config: TileConfig, data_type: Callable, vector_widths: list[int], matrix_inst: list[int], mfma_wave_group: list[int]):
         """
         Initialize the registration decorator with matching criteria.
         
         Args:
             tile_config: Tuple of (MT0, MT1, DU, PGR, PLR, DTL)
             data_type: Callable that takes kernel and returns True if data type matches
-            vector_widths: Tuple of (GRVWA, GRVWB, LRVW)
+            vector_widths: List of [GRVWA, GRVWB, LRVW]
             matrix_inst: List [M, N, K, B] for MI
             mfma_wave_group: List [rows, cols] for MIWG
         """
@@ -507,7 +507,7 @@ class RegisterSchedule:
 @RegisterSchedule(
     tile_config=TileConfig(256, 96, 64, 2, 1, True),
     data_type=is16bit,
-    vector_widths=(8, 8, 8),
+    vector_widths=[8, 8, 8],
     matrix_inst=[16, 16, 32, 1],
     mfma_wave_group=[2, 2]
 )
@@ -569,7 +569,7 @@ def _get_schedule_256x96x64_16bit(kernel, useLDSTr, TLDS):
 @RegisterSchedule(
     tile_config=TileConfig(192, 256, 64, 2, 1, True),
     data_type=is16bit,
-    vector_widths=(8, 8, 8),
+    vector_widths=[8, 8, 8],
     matrix_inst=[16, 16, 32, 1],
     mfma_wave_group=[2, 2]
 )
@@ -668,7 +668,7 @@ def _get_schedule_192x256x64_16bit(kernel, useLDSTr, TLDS):
 @RegisterSchedule(
     tile_config=TileConfig(256, 192, 64, 2, 1, True),
     data_type=is16bit,
-    vector_widths=(8, 8, 8),
+    vector_widths=[8, 8, 8],
     matrix_inst=[16, 16, 32, 1],
     mfma_wave_group=[2, 2]
 )
@@ -730,7 +730,7 @@ def _get_schedule_256x192x64_16bit(kernel, useLDSTr, TLDS):
 @RegisterSchedule(
     tile_config=TileConfig(256, 256, 128, 2, 0, True),
     data_type=is8bit,
-    vector_widths=(16, 16, 16),
+    vector_widths=[16, 16, 16],
     matrix_inst=[16, 16, 128, 1],
     mfma_wave_group=[2, 2]
 )
@@ -784,7 +784,7 @@ def _get_schedule_256x256x128_8bit(kernel, useLDSTr, TLDS):
 @RegisterSchedule(
     tile_config=TileConfig(256, 256, 64, 2, 1, True),
     data_type=is16bit,
-    vector_widths=(8, 8, 8),
+    vector_widths=[8, 8, 8],
     matrix_inst=[16, 16, 32, 1],
     mfma_wave_group=[2, 2]
 )
@@ -929,7 +929,7 @@ def _get_schedule_256x256x64_16bit(kernel, useLDSTr, TLDS):
 @RegisterSchedule(
     tile_config=TileConfig(160, 256, 64, 2, 1, True),
     data_type=is16bit,
-    vector_widths=(8, 8, 8),
+    vector_widths=[8, 8, 8],
     matrix_inst=[16, 16, 32, 1],
     mfma_wave_group=[2, 2]
 )
@@ -1059,7 +1059,7 @@ def _get_schedule_160x256x64_16bit(kernel, useLDSTr, TLDS):
 @RegisterSchedule(
     tile_config=TileConfig(256, 160, 64, 2, 1, True),
     data_type=is16bit,
-    vector_widths=(8, 8, 8),
+    vector_widths=[8, 8, 8],
     matrix_inst=[16, 16, 32, 1],
     mfma_wave_group=[2, 2]
 )
@@ -1140,7 +1140,7 @@ def _get_schedule_256x160x64_16bit(kernel, useLDSTr, TLDS):
 @RegisterSchedule(
     tile_config=TileConfig(256, 240, 64, 2, 1, True),
     data_type=is16bit,
-    vector_widths=(8, 2, 8),
+    vector_widths=[8, 2, 8],
     matrix_inst=[16, 16, 32, 1],
     mfma_wave_group=[4, 1]
 )
@@ -1245,7 +1245,7 @@ def _get_schedule_256x240x64_16bit(kernel, useLDSTr, TLDS):
 @RegisterSchedule(
     tile_config=TileConfig(256, 208, 64, 2, 1, True),
     data_type=is16bit,
-    vector_widths=(8, 2, 8),
+    vector_widths=[8, 2, 8],
     matrix_inst=[16, 16, 32, 1],
     mfma_wave_group=[4, 1]
 )
@@ -1364,7 +1364,7 @@ def _get_schedule_256x208x64_16bit(kernel, useLDSTr, TLDS):
 @RegisterSchedule(
     tile_config=TileConfig(224, 256, 64, 2, 1, True),
     data_type=is16bit,
-    vector_widths=(8, 8, 8),
+    vector_widths=[8, 8, 8],
     matrix_inst=[16, 16, 32, 1],
     mfma_wave_group=[2, 2]
 )
@@ -1420,7 +1420,7 @@ def _get_schedule_224x256x64_16bit(kernel, userLDSTr, TLDS):
 @RegisterSchedule(
     tile_config=TileConfig(192, 320, 64, 2, 1, True),
     data_type=is16bit,
-    vector_widths=(8, 8, 8),
+    vector_widths=[8, 8, 8],
     matrix_inst=[16, 16, 32, 1],
     mfma_wave_group=[2, 2]
 )
@@ -1468,7 +1468,7 @@ def _get_schedule_192x320x64_16bit(kernel, useLDSTr, TLDS):
 @RegisterSchedule(
     tile_config=TileConfig(256, 224, 64, 2, 1, True),
     data_type=is16bit,
-    vector_widths=(8, 8, 8),
+    vector_widths=[8, 8, 8],
     matrix_inst=[16, 16, 32, 1],
     mfma_wave_group=[2, 2]
 )
@@ -1527,7 +1527,7 @@ def _get_schedule_256x224x64_16bit(kernel, userLDSTr, TLDS):
 @RegisterSchedule(
     tile_config=TileConfig(240, 256, 64, 2, 1, True),
     data_type=is16bit,
-    vector_widths=(2, 8, 8),
+    vector_widths=[2, 8, 8],
     matrix_inst=[16, 16, 32, 1],
     mfma_wave_group=[1, 4]
 )
@@ -1583,7 +1583,7 @@ def _get_schedule_240x256x64_16bit(kernel, useLDSTr, TLDS):
 @RegisterSchedule(
     tile_config=TileConfig(208, 256, 64, 2, 1, True),
     data_type=is16bit,
-    vector_widths=(2, 8, 8),
+    vector_widths=[2, 8, 8],
     matrix_inst=[16, 16, 32, 1],
     mfma_wave_group=[1, 4]
 )
