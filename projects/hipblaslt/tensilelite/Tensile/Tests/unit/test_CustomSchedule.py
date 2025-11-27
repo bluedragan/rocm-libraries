@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock
 
-from Tensile.Components.CustomSchedule import hasCustomSchedule, ScheduleInfo, verifyAscendingOrder
+from Tensile.Components.CustomSchedule import hasCustomSchedule, ScheduleInfo, verifyAscendingOrder, verifyLRsDoneInTime
 from Tensile.Common import IsaVersion
 
 # Helper to create a mock data type
@@ -230,4 +230,26 @@ class TestCustomScheduleValidation:
         ).isValid({})
         assert status == False
 
+
+    def test_simple_LRA0_and_LRB0(self):
+        from rocisa.instruction import SWaitCnt, SBarrier
+        """
+        Verify the simple case where both LRA0 and LRB0 are issues and finished before the halfway point of the main loop.
+        """
+        optSchedule = {
+            "SYNC": [[5, 5]],
+            "LRA0": [[1, 2]],
+            "LRB0": [[3, 4]]
+        }
+
+        syncCode = {
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
+            SBarrier(comment=""),
+        }
+        sched = ScheduleInfo(
+            None, 20, optSchedule, syncCode, None, None, None
+        )
+        status, message = verifyLRsDoneInTime(sched, {})
+        # assert status, f"Schedule should have passed validation but did not. {message}"
+        assert not status, "Should not be passing yet."
 

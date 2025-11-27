@@ -41,6 +41,27 @@ from copy import deepcopy
 from typing import Dict
 
 
+def verifyLRsDoneInTime(scheduleInfo, context: dict) -> tuple[bool, str]:
+    """
+    Ensure that the A and B data needed for VMFA at index=i is guaranteed to be done before index=i.
+    """
+    def verifyLRDoneInTimeSIMD(scheduleInfo, context: dict) -> tuple[bool, str]:
+        pass
+    
+    # 1. Find how many VMFMAs there are.
+    numVMFMA = scheduleInfo.numMfma
+    halfwayPoint = numVMFMA // 2
+
+    # Find when the last LRA0 and LRB0 are issued.
+    lastLRA0 = scheduleInfo.optSchedule["LRA0"][-1]
+    lastLRB0 = scheduleInfo.optSchedule["LRB0"][-1]
+
+    # F
+    
+
+    return True, ""
+
+
 def verifyAscendingOrder(scheduleInfo, context: Dict = {}):
     """
     Ensure that all sequences of scheduleInfo.optSchedule are non-decreasing.
