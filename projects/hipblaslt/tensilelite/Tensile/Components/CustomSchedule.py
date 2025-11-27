@@ -79,7 +79,8 @@ def verifyLRsDoneInTime(scheduleInfo: 'ScheduleInfo', context: dict) -> tuple[bo
                 break
             if not isinstance(sync, SWaitCnt):
                 continue
-            if idx < max(lastLRA0, lastLRB0):                continue 
+            if idx < max(lastLRA0, lastLRB0):
+                continue 
             if sync.dscnt == 0:
                 good = True
                 break
