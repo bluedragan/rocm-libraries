@@ -242,6 +242,8 @@ class TestCustomScheduleValidation:
         from rocisa.instruction import SWaitCnt
 
         kernel = create_base_kernel()
+        kernel['MIWaveTileA'] = 2
+        kernel['MIWaveTileB'] = 2
         
         optSchedule = {
             "SYNC": [[3]],
@@ -258,14 +260,14 @@ class TestCustomScheduleValidation:
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
 
-        optSchedule["LRA0"] = [[1, 11]]
+        optSchedule["LRA0"] = [[1, 6]]
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
-        assert not status, f"Schedule should have failed, but passed."
+        assert not status, f"Schedule should have failed (LRA0 issued after halfway point), but passed."
 
         optSchedule["LRA0"] = [[1, 2]]
-        optSchedule["LRB0"] = [[3, 15]]
+        optSchedule["LRB0"] = [[3, 6]]
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
-        assert not status, f"Schedule should have failed, but passed."
+        assert not status, f"Schedule should have failed (LRB0 issued after halfway point), but passed."
 
     def test_simple_LR0_w_LR1(self):
         """
@@ -274,14 +276,17 @@ class TestCustomScheduleValidation:
         from rocisa.instruction import SWaitCnt
 
         kernel = create_base_kernel()
+        kernel['MIWaveTileA'] = 2
+        kernel['MIWaveTileB'] = 2
         
         optSchedule = {
-            "SYNC": [[3]],
+            "SYNC": [[3, 7]],
             "LRA0": [[0, 0]],
             "LRB0": [[0, 0]],
             "LRA1": [[2]],
         }
         syncCode = [
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
         ]
         sched = ScheduleInfo(
@@ -290,7 +295,7 @@ class TestCustomScheduleValidation:
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation 1/2 but did not. {message}"
 
-        # Chaning barrier from 0 to 1 for LRA1 should still pass
+        # Changing barrier from 0 to 1 for LRA1 should still pass
         syncCode[0].dscnt = 1
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation 2/2 but did not. {message}"
@@ -303,11 +308,13 @@ class TestCustomScheduleValidation:
         from rocisa.instruction import SWaitCnt
 
         kernel = create_base_kernel()
+        kernel['MIWaveTileA'] = 2
+        kernel['MIWaveTileB'] = 2
 
         optSchedule = {
-            "SYNC": [[3, 5]],
+            "SYNC": [[3, 4]],
             "LRA0": [[0, 0]],
-            "LRB0": [[0, 4]],  # 2nd LRB0 is n
+            "LRB0": [[0, 2]],  # 2nd LRB0 is n
         }
         syncCode = [
             SWaitCnt(dscnt=1, vlcnt=-1, vscnt=-1, comment=""),
@@ -326,6 +333,8 @@ class TestCustomScheduleValidation:
         """
         from rocisa.instruction import SWaitCnt
         kernel = create_base_kernel()
+        kernel['MIWaveTileA'] = 2
+        kernel['MIWaveTileB'] = 2
 
         optSchedule = {
             "SYNC": [[7]],
@@ -341,12 +350,31 @@ class TestCustomScheduleValidation:
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
 
+    def test_simple_LR1_never_guaranteed(self):
+        """
+        Case where LR1 is finished before the end of loop.
+        """
+        kernel = create_base_kernel()
+
+        optSchedule = {
+            "SYNC": [[]],
+            "LRA1": [[4]],
+        }
+        syncCode = []
+        sched = ScheduleInfo(
+            1, 8, optSchedule, syncCode, None, None, None
+        )
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert not status, f"Schedule should have failed (LRA1 never guaranteed), but passed. {message}"
+
     def test_complex_LR1(self):
         """
         Case where LR1 finishes during the beginning of next iteration.
         """
         from rocisa.instruction import SWaitCnt
         kernel = create_base_kernel()
+        kernel['MIWaveTileA'] = 2
+        kernel['MIWaveTileB'] = 2
 
         optSchedule = {
             "SYNC": [[1, 7]],
@@ -362,3 +390,21 @@ class TestCustomScheduleValidation:
         )
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
+
+    def test_more_LRs(self):
+        raise NotImplementedError("Not implemented")
+    
+    def test_less_LRs(self):
+        raise NotImplementedError("Not implemented")
+
+    def test_simple_LR2(self):
+        raise NotImplementedError("Not implemented")
+    
+    def test_complex_LR2(self):
+        raise NotImplementedError("Not implemented")
+
+    def test_simple_LR3(self):
+        raise NotImplementedError("Not implemented")
+    
+    def test_complex_LR3(self):
+        raise NotImplementedError("Not implemented")
