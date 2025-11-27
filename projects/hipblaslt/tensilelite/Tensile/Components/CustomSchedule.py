@@ -41,24 +41,56 @@ from copy import deepcopy
 from typing import Dict
 
 
-def verifyLRsDoneInTime(scheduleInfo, context: dict) -> tuple[bool, str]:
+def verifyLRsDoneInTime(scheduleInfo: 'ScheduleInfo', context: dict) -> tuple[bool, str]:
     """
     Ensure that the A and B data needed for VMFA at index=i is guaranteed to be done before index=i.
     """
-    def verifyLRDoneInTimeSIMD(scheduleInfo, context: dict) -> tuple[bool, str]:
-        pass
-    
-    # 1. Find how many VMFMAs there are.
+    from Tensile.SolutionStructs import Solution
     numVMFMA = scheduleInfo.numMfma
     halfwayPoint = numVMFMA // 2
 
-    # Find when the last LRA0 and LRB0 are issued.
-    lastLRA0 = scheduleInfo.optSchedule["LRA0"][-1]
-    lastLRB0 = scheduleInfo.optSchedule["LRB0"][-1]
+    kernel: Solution = context["kernel"]
+    nLRA = kernel['NumLoadsA']
+    nLRB = kernel['NumLoadsB']
+    nTilesA = kernel['MIWaveTileA']
+    nTilesB = kernel['MIWaveTileB']
 
-    # F
+    # How many MFMA worth of data is loaded by each LRA/LRB
+    n_tiles_per_LRA = nTilesA / nLRA
+    n_tiles_per_LRB = nTilesB / nLRB
+
+
+    def get(name, simd):
+        l = scheduleInfo.optSchedule[name]
+        return l[0] if len(l) == 1 else l[simd]
     
+    def verifyLRDoneInTimeSIMD(scheduleInfo: 'ScheduleInfo', context: dict, codePath: int) -> tuple[bool, str]:    
+        # Find when the last LRA0 and LRB0 are issued.
+        lastLRA0 = get("LRA0", codePath)[-1]
+        lastLRB0 = get("LRB0", codePath)[-1]
 
+        if lastLRA0 >= halfwayPoint or lastLRB0 >= halfwayPoint:
+            return False, f"LRA0 or LRB0 not done in time for code path {codePath}. lastLRA0={lastLRA0}, lastLRB0={lastLRB0}, halfwayPoint={halfwayPoint}"
+
+        # Check all SWaitCnt in the first half to make sure one of them goes to 0.
+        good = False
+        for idx, sync in zip(get("SYNC", codePath), scheduleInfo.syncCode):
+            if idx >= halfwayPoint:
+                break
+            if not isinstance(sync, SWaitCnt):
+                continue
+            if idx < max(lastLRA0, lastLRB0):                continue 
+            if sync.dscnt == 0:
+                good = True
+                break
+        if not good:
+            return False, f"No SWaitCnt of 0 in the first half goes to 0 for code path {codePath} after LRA0 and LRB0 are done"
+        return True, ""
+    
+    for i in range(scheduleInfo.numCodePaths):
+        status, message = verifyLRDoneInTimeSIMD(scheduleInfo, context, i)
+        if status is False:
+            return False, message
     return True, ""
 
 
@@ -121,7 +153,8 @@ class ScheduleInfo:
 
         # The set of validation rules to run inside `isValid`.
         self.rules: List[Callable[[ScheduleInfo, dict], [bool, str]]] = [
-            verifyAscendingOrder
+            verifyAscendingOrder,
+            verifyLRsDoneInTime
         ]
 
     def disableValidation(self):
@@ -269,7 +302,7 @@ def customMainLoopSchedule(writer, kernel, tensorParametersA, tensorParametersB,
 
         return InstStreams
 
-    status, message = opt1.isValid({'kernel' : kernel})
+    status, message = opt1.isValid({'kernel' : kernel, 'idmap': idMap})
     assert status is True, f"Custom mainloop schedule validation failed: {message}"
 
     InstStreams = convOptToStream(opt1)
