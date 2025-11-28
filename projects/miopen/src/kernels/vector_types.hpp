@@ -28,6 +28,7 @@
 #define VECTOR_TYPES_HPP
 
 #include "bfloat16_dev.hpp"
+#include "miopen_type_traits.hpp"
 
 #ifndef MIOPEN_DONT_USE_HIP_RUNTIME_HEADERS
 #include <hip/hip_fp16.h>
