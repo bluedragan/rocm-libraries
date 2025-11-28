@@ -110,7 +110,7 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
                 continue
             num_unaffected = sync.dscnt
 
-            # Deal with those issued in this loop iteration i in [0, idx).
+            # Deal with those issued in this iteration, i in [0, idx).
             for i in range(idx-1, -1, -1):
                 for LR in reversed(schedule[i]):
                     if num_unaffected > 0:
@@ -118,7 +118,7 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
                         continue
                     LR.guaranteed_by = min(LR.guaranteed_by, idx)
             
-            # Deal with those issued in previous loop iterations in [idx, numVMFMA).
+            # Deal with those issued in previous iterations, i in [idx, numVMFMA).
             for i in range(numVMFMA-1, idx+1, -1):
                 for LR in reversed(schedule[i]):
                     if num_unaffected > 0:
