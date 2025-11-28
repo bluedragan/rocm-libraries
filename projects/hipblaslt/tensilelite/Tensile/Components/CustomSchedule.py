@@ -94,7 +94,7 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
 
         LR_names.sort(key=lambda x: implemented_names.index(x))
         
-        # Find all localreads and place in schedule
+        # Place LRs in schedule
         schedule = [[] for _ in range(schedule_info.numMfma)]
         for name in LR_names:            
             offset = halfwayPoint if "0" in name else numVMFMA
@@ -104,25 +104,25 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
                 LR = LocalRead(name=name, issued_at=idx_VMFMA, needed_by=needed_by(idx_LR, offset))
                 schedule[idx_VMFMA].append(LR)
 
-        # Traverse timeline and apply effect of SWaitCnts
+        # Apply effect of SWaitCnts
         for idx, sync in zip(get("SYNC", code_path), schedule_info.syncCode):
             if not isinstance(sync, SWaitCnt):
                 continue
-            cnt = sync.dscnt
+            num_unaffected = sync.dscnt
+
             # Deal with those issued in this loop iteration i in [0, idx).
             for i in range(idx-1, -1, -1):
                 for LR in reversed(schedule[i]):
-                    if cnt > 0:
-                        # Skip the first cnt LRs since the SWaitCnt doesn't apply to them
-                        cnt -= 1
+                    if num_unaffected > 0:
+                        num_unaffected -= 1
                         continue
                     LR.guaranteed_by = min(LR.guaranteed_by, idx)
+            
             # Deal with those issued in previous loop iterations in [idx, numVMFMA).
             for i in range(numVMFMA-1, idx+1, -1):
                 for LR in reversed(schedule[i]):
-                    if cnt > 0:
-                        # Skip the first cnt LRs since the SWaitCnt doesn't apply to them
-                        cnt -= 1
+                    if num_unaffected > 0:
+                        num_unaffected -= 1
                         continue
                     LR.guaranteed_by = min(LR.guaranteed_by, idx + numVMFMA)
         # Validate
