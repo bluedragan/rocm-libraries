@@ -340,6 +340,28 @@ class TestVerifyLRsDoneInTime:
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
 
+    def test_pre_loop_SWaitCnt(self):
+        """
+        Case where LR1 is finished before the end of loop.
+        """
+        kernel = create_base_kernel()
+        num_vmfma = 2 * kernel["MIWaveTileA"] * kernel["MIWaveTileB"]
+
+        optSchedule = {
+            "SYNC": [[-1, 1]],
+            "LRA0": [[0, 0]],
+            "LRB0": [[0, 0]],
+            "LRA1": [[4, 4]],
+            "LRB1": [[4, 4]],
+        }
+        syncCode = [
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
+        ]
+        sched = ScheduleInfo(1, num_vmfma, optSchedule, syncCode, None, None, None)
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert status, f"Schedule should have passed validation but did not. {message}"
+
     def test_simple_LR1_never_guaranteed(self):
         """
         Case where LR1 is finished before the end of loop.
@@ -387,32 +409,55 @@ class TestVerifyLRsDoneInTime:
         """
         Case where each LR reads less than 1 WaveTile worth of data.
         """
-        # TODO: A and B both read less
+        kernel = create_base_kernel()
+        num_vmfma = 2 * kernel["MIWaveTileA"] * kernel["MIWaveTileB"]
 
-        # TODO: A reads less
+        optSchedule = {
+            "SYNC": [[0, 1, 3, 4, 5, 7]],
+            "LRA0": [[0, 0, 3, 3]],
+            "LRB0": [[1, 1, 2, 4]],
+            "LRA1": [[5, 5, 7, 7]],
+            "LRB1": [[6, 6, 7, 7]],
+        }
+        syncCode = [
+            SWaitCnt(dscnt=2, vlcnt=-1, vscnt=-1, comment="4/4 LRA1 and 2/4 LRB1"),
+            SWaitCnt(dscnt=2, vlcnt=-1, vscnt=-1, comment="4/4 LRB1"),
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="2/4 LRA0 and 3/4 LRB0"),
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="4/4 LRA0 and 3/4 LRB0"),
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="4/4 LRB0"),
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="2/4 LRA1 and 2/4 LRB1"),
+        ]
+        sched = ScheduleInfo(1, num_vmfma, optSchedule, syncCode, None, None, None)
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert status, f"Schedule should have passed validation but did not. {message}"
 
-        # TODO: B reads less
-        raise NotImplementedError("Not implemented")
     
     def test_less_LRs(self):
         """
         Case where each LR reads more than 1 WaveTile worth of data.
         """
-        # TODO: A and B both read more
+        kernel = create_base_kernel()
+        kernel["MIWaveTileA"] = 4
+        kernel["MIWaveTileB"] = 4
+        num_vmfma = 2 * kernel["MIWaveTileA"] * kernel["MIWaveTileB"]
 
-        # TODO: A reads more
+        optSchedule = {
+            "SYNC": [[7, 15, 31]],
+            "LRA0": [[12, 13]],
+            "LRB0": [[13, 14]],
+            "LRA1": [[16, 17]],
+            "LRB1": [[18, 19]],
+        }
+        syncCode = [
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="2/2 LRB1"),
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="LRA0 and LRB0"),
+            SWaitCnt(dscnt=1, vlcnt=-1, vscnt=-1, comment="LRA1 and 1/2 LRB1"),
+        ]
+        sched = ScheduleInfo(1, num_vmfma, optSchedule, syncCode, None, None, None)
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert status, f"Schedule should have passed validation but did not. {message}"
 
-        # TODO: B reads more
-        raise NotImplementedError("Not implemented")
-
-    def test_simple_LR2(self):
-        raise NotImplementedError("Not implemented")
-    
-    def test_complex_LR2(self):
-        raise NotImplementedError("Not implemented")
-
-    def test_simple_LR3(self):
-        raise NotImplementedError("Not implemented")
-    
-    def test_complex_LR3(self):
-        raise NotImplementedError("Not implemented")
+        # Failure case
+        optSchedule["SYNC"][0][0] = 8
+        status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
+        assert not status, f"Schedule should have failed (LRB0 not finished before being needed), but passed. {message}"
