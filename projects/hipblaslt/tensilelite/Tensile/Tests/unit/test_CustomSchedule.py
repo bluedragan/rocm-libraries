@@ -76,7 +76,8 @@ class TestCustomSchedule:
         assert isinstance(schedule_info, ScheduleInfo)
         assert schedule_info.numCodePaths == 2
         assert schedule_info.numMfma == 128
-        assert schedule_info.isValid({"kernel" : kernel})[0]
+        valid, message = schedule_info.isValid({"kernel" : kernel})
+        assert valid, message
         assert 'PackA0' not in schedule_info.optSchedule
         assert not kernel["UsePLRPack"]
 
@@ -104,7 +105,8 @@ class TestCustomSchedule:
         assert schedule_info.numMfma == 128
         assert 'PackA0' in schedule_info.optSchedule
         assert kernel["UsePLRPack"]
-        assert schedule_info.isValid({"kernel" : kernel})[0]
+        valid, message = schedule_info.isValid({"kernel" : kernel})
+        assert valid, message
 
     @pytest.mark.parametrize("transA, transB", [(False, False), (True, True)])
     def test_schedule_256x256x64_16bit_NN_TT(self, transA, transB):
@@ -130,7 +132,8 @@ class TestCustomSchedule:
         assert schedule_info.numCodePaths == 2
         assert schedule_info.numMfma == 128
         assert kernel["UsePLRPack"]
-        assert schedule_info.isValid({"kernel" : kernel})[0]
+        valid, message = schedule_info.isValid({"kernel" : kernel})
+        assert valid, message
         if transA and transB: # isTT
             assert kernel["SwapGlobalReadOrder"]
             assert 'PackB0' in schedule_info.optSchedule
@@ -162,7 +165,8 @@ class TestCustomSchedule:
         assert schedule_info.numCodePaths == 1
         assert schedule_info.numMfma == 64
         assert len(schedule_info.mfmaReorder) > 0
-        assert schedule_info.isValid({"kernel" : kernel})[0]
+        valid, message = schedule_info.isValid({"kernel" : kernel})
+        assert valid, message
 
     def test_schedule_192x256x64_16bit_NN(self):
         """Tests the 192x256x64 16-bit NN schedule."""
@@ -186,7 +190,8 @@ class TestCustomSchedule:
         assert schedule_info.numCodePaths == 2
         assert schedule_info.numMfma == 96
         assert kernel["SwapGlobalReadOrder"]
-        assert schedule_info.isValid({"kernel" : kernel})[0]
+        valid, message = schedule_info.isValid({"kernel" : kernel})
+        assert valid, message
 
 
 class TestCustomScheduleValidation:
