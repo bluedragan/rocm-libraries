@@ -351,7 +351,7 @@ def customMainLoopSchedule(writer, kernel, tensorParametersA, tensorParametersB,
 
         return InstStreams
 
-    status, message = opt1.isValid({'kernel' : kernel, 'idmap': idMap})
+    status, message = opt1.isValid({'kernel' : kernel})
     assert status is True, f"Custom mainloop schedule validation failed: {message}"
 
     InstStreams = convOptToStream(opt1)
