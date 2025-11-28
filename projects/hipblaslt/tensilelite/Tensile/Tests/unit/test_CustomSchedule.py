@@ -246,6 +246,7 @@ class TestVerifyLRsDoneInTime:
         Verify the simple case where both LRA0 and LRB0 are issued and finished before the halfway point of the main loop.
         """
         kernel = create_base_kernel()
+        num_vmfma = 2 * kernel["MIWaveTileA"] * kernel["MIWaveTileB"]
         
         optSchedule = {
             "SYNC": [[3]],
@@ -256,7 +257,7 @@ class TestVerifyLRsDoneInTime:
         syncCode = [
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
         ]
-        sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
+        sched = ScheduleInfo(1, num_vmfma, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
 
@@ -274,7 +275,8 @@ class TestVerifyLRsDoneInTime:
         Handle case where we start reading LRA1 before halfway point.
         """
         kernel = create_base_kernel()
-        
+        num_vmfma = 2 * kernel["MIWaveTileA"] * kernel["MIWaveTileB"]
+
         optSchedule = {
             "SYNC": [[3, 7]],
             "LRA0": [[0, 0]],
@@ -285,7 +287,7 @@ class TestVerifyLRsDoneInTime:
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
         ]
-        sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
+        sched = ScheduleInfo(1, num_vmfma, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation 1/2 but did not. {message}"
 
@@ -300,6 +302,7 @@ class TestVerifyLRsDoneInTime:
         2nd LRB0 is not needed until iteration 6 & 7
         """
         kernel = create_base_kernel()
+        num_vmfma = 2 * kernel["MIWaveTileA"] * kernel["MIWaveTileB"]
 
         optSchedule = {
             "SYNC": [[3, 4]],
@@ -310,7 +313,7 @@ class TestVerifyLRsDoneInTime:
             SWaitCnt(dscnt=1, vlcnt=-1, vscnt=-1, comment=""),
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
         ]
-        sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
+        sched = ScheduleInfo(1, num_vmfma, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
 
@@ -320,6 +323,7 @@ class TestVerifyLRsDoneInTime:
         Case where LR1 is finished before the end of loop.
         """
         kernel = create_base_kernel()
+        num_vmfma = 2 * kernel["MIWaveTileA"] * kernel["MIWaveTileB"]
 
         optSchedule = {
             "SYNC": [[1, 7]],
@@ -332,7 +336,7 @@ class TestVerifyLRsDoneInTime:
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
         ]
-        sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
+        sched = ScheduleInfo(1, num_vmfma, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
 
@@ -341,6 +345,7 @@ class TestVerifyLRsDoneInTime:
         Case where LR1 is finished before the end of loop.
         """
         kernel = create_base_kernel()
+        num_vmfma = 2 * kernel["MIWaveTileA"] * kernel["MIWaveTileB"]
 
         optSchedule = {
             "SYNC": [[1]],
@@ -351,7 +356,7 @@ class TestVerifyLRsDoneInTime:
         syncCode = [
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
         ]
-        sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
+        sched = ScheduleInfo(1, num_vmfma, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert not status, f"Schedule should have failed (LRA1 never guaranteed), but passed. {message}"
 
@@ -360,6 +365,7 @@ class TestVerifyLRsDoneInTime:
         Case where LR1 finishes during the beginning of next iteration.
         """
         kernel = create_base_kernel()
+        num_vmfma = 2 * kernel["MIWaveTileA"] * kernel["MIWaveTileB"]
 
         optSchedule = {
             "SYNC": [[1, 3, 7]],
@@ -373,7 +379,7 @@ class TestVerifyLRsDoneInTime:
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="All of LRA0 and LRB0"),
             SWaitCnt(dscnt=1, vlcnt=-1, vscnt=-1, comment="2/2 LRA1 and 1/2 LRB1"),
         ]
-        sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
+        sched = ScheduleInfo(1, num_vmfma, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
 
