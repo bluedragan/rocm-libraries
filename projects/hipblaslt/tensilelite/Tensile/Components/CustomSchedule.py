@@ -95,6 +95,7 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
         LR_names.sort(key=lambda x: implemented_names.index(x))
         
         # Place LRs in schedule
+        # TODO: Handle -1 by adding 1 extra slot, and offsetting reads by 1.
         schedule = [[] for _ in range(schedule_info.numMfma)]
         for name in LR_names:            
             offset = halfwayPoint if "0" in name else numVMFMA
@@ -110,6 +111,9 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
                 continue
             num_unaffected = sync.dscnt
 
+            if idx < -1:
+                return False, f"Code path {code_path}: SWaitCnt at index {idx} is not valid. Must be >= -1."
+
             # Deal with those issued in this iteration, i in [0, idx).
             for i in range(idx-1, -1, -1):
                 for LR in reversed(schedule[i]):
@@ -119,7 +123,11 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
                     LR.guaranteed_by = min(LR.guaranteed_by, idx)
             
             # Deal with those issued in previous iterations, i in [idx, numVMFMA).
-            for i in range(numVMFMA-1, idx+1, -1):
+            # idx=-1 is special case that occurs before the first iteration but after the last iteration.
+            # It is NOT the same as idx=numVMFMA-1, which is the last iteration.
+            # instructions scheduled at idx=numVMFMA
+            range_end = idx+1 if idx != -1 else 0
+            for i in range(numVMFMA-1, range_end, -1):
                 for LR in reversed(schedule[i]):
                     if num_unaffected > 0:
                         num_unaffected -= 1
