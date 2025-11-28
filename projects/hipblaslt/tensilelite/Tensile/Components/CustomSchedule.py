@@ -95,15 +95,17 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
         LR_names.sort(key=lambda x: implemented_names.index(x))
         
         # Place LRs in schedule
-        # TODO: Handle -1 by adding 1 extra slot, and offsetting reads by 1.
-        schedule = [[] for _ in range(schedule_info.numMfma)]
+        # numMfma + 1 to account for special idx=-1.
+        # idx=-1 is special case that occurs BEFORE the first VMFMA but AFTER the last VMFMA.
+        # Instructions at idx=-1 happen after all instructions at idx=numVMFMA-1 and BEFORE all instructions (including the VMFMA) at idx=0.
+        schedule = [[] for _ in range(schedule_info.numMfma+1)]
         for name in LR_names:            
             offset = halfwayPoint if "0" in name else numVMFMA
             needed_by = index_LRA_needed_by_mfma if name.startswith("LRA") else index_LRB_needed_by_mfma
 
             for idx_LR, idx_VMFMA in enumerate(get(name, code_path)):
                 LR = LocalRead(name=name, issued_at=idx_VMFMA, needed_by=needed_by(idx_LR, offset))
-                schedule[idx_VMFMA].append(LR)
+                schedule[idx_VMFMA+1].append(LR)
 
         # Apply effect of SWaitCnts
         for idx, sync in zip(get("SYNC", code_path), schedule_info.syncCode):
@@ -115,37 +117,41 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
                 return False, f"Code path {code_path}: SWaitCnt at index {idx} is not valid. Must be >= -1."
 
             # Deal with those issued in this iteration, i in [0, idx).
-            for i in range(idx-1, -1, -1):
-                for LR in reversed(schedule[i]):
+            for i in range(idx-1, -2, -1):
+                for LR in reversed(schedule[i+1]):
                     if num_unaffected > 0:
                         num_unaffected -= 1
                         continue
                     LR.guaranteed_by = min(LR.guaranteed_by, idx)
             
             # Deal with those issued in previous iterations, i in [idx, numVMFMA).
-            # idx=-1 is special case that occurs before the first iteration but after the last iteration.
-            # It is NOT the same as idx=numVMFMA-1, which is the last iteration.
-            # instructions scheduled at idx=numVMFMA
-            range_end = idx+1 if idx != -1 else 0
-            for i in range(numVMFMA-1, range_end, -1):
-                for LR in reversed(schedule[i]):
+            for i in range(numVMFMA-1, idx-1, -1):
+                for LR in reversed(schedule[i+1]):
                     if num_unaffected > 0:
                         num_unaffected -= 1
                         continue
-                    LR.guaranteed_by = min(LR.guaranteed_by, idx + numVMFMA)
+                    guaranteed_by = idx + numVMFMA
+                    if idx == -1:  # TODO: Hacky, need a better solution.
+                        guaranteed_by += 0.5
+                    LR.guaranteed_by = min(LR.guaranteed_by, guaranteed_by)
         # Validate
         for LRs in schedule:
             for LR in LRs:
                 if not LR.isValid():
                     # Modulo for LRs that finish in next iteration.
-                    issued_at = LR.issued_at % numVMFMA
                     needed_by = LR.needed_by % numVMFMA
                     if LR.guaranteed_by == float('inf'):
-                        message = f"Code path {code_path}: {LR.name} at index {issued_at} is not valid. " + \
+                        message = f"Code path {code_path}: {LR.name} at index {LR.issued_at} is not valid. " + \
                                   "There are no guaranteed on when it will be done."
                     else:
-                        guaranteed_by = LR.guaranteed_by % numVMFMA
-                        message = f"Code path {code_path}: {LR.name} at index {issued_at} is not valid. " + \
+                        guaranteed_by = LR.guaranteed_by
+                        # TODO: Not happy with this.
+                        if isinstance(guaranteed_by, float):
+                            # Special case to handle idx=-1
+                            guaranteed_by = -1
+                        else:
+                            guaranteed_by %= numVMFMA
+                        message = f"Code path {code_path}: {LR.name} at index {LR.issued_at} is not valid. " + \
                                     f"Needed by index {needed_by}, but only guaranteed by index {guaranteed_by}."
                     return False, message
                     
