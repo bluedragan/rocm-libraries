@@ -137,8 +137,8 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
         return True, ""
     
     for code_path in range(schedule_info.numCodePaths):
-        status, message = verify(schedule_info, code_path)
-        if status is False:
+        valid, message = verify(schedule_info, code_path)
+        if not valid:
             return False, message
     return True, ""
 
