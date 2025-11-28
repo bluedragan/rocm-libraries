@@ -299,7 +299,7 @@ class TestVerifyLRsDoneInTime:
     
     def test_complex_LR0(self):
         """
-        2nd LRB0 is not needed until iteration 6 & 7
+        2nd LRB0 is not needed until iteration 6 & 7, can have SWaitCnt for it after the halfway point.
         """
         kernel = create_base_kernel()
         num_vmfma = 2 * kernel["MIWaveTileA"] * kernel["MIWaveTileB"]
@@ -320,7 +320,7 @@ class TestVerifyLRsDoneInTime:
 
     def test_simple_LR1(self):
         """
-        Case where LR1 is finished before the end of loop.
+        Case where LR1 is finished before the end of the current iteration.
         """
         kernel = create_base_kernel()
         num_vmfma = 2 * kernel["MIWaveTileA"] * kernel["MIWaveTileB"]
@@ -342,7 +342,7 @@ class TestVerifyLRsDoneInTime:
 
     def test_pre_loop_SWaitCnt(self):
         """
-        Case where LR1 is finished before the end of loop.
+        Case where LR1 is finished before start of next iteration.
         """
         kernel = create_base_kernel()
         num_vmfma = 2 * kernel["MIWaveTileA"] * kernel["MIWaveTileB"]
