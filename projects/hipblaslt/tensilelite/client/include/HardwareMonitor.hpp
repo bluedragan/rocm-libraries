@@ -36,6 +36,7 @@
 #include <hip/hip_runtime.h>
 #include <rocm_smi/rocm_smi.h>
 #include <rocm_smi/rocm_smi64Config.h>
+#include <amd_smi/amdsmi.h>
 
 namespace TensileLite
 {
@@ -54,7 +55,7 @@ namespace TensileLite
         public:
             /** Translates the Hip device index into the corresponding device index for
    * ROCm-SMI. */
-            static uint32_t GetROCmSMIIndex(int hipDeviceIndex);
+            uint32_t GetROCmSMIIndex(int hipDeviceIndex);
 
             using rsmi_temperature_type_t = int;
             using clock                   = std::chrono::steady_clock;
@@ -161,6 +162,8 @@ namespace TensileLite
             // Reserved for further performance check.
             std::vector<uint64_t>              m_SYSCLK_sum;
             std::vector<std::vector<uint64_t>> m_SYSCLK_array;
+
+			std::vector<amdsmi_socket_handle> socketHandle;
         };
     } // namespace Client
 } // namespace TensileLite

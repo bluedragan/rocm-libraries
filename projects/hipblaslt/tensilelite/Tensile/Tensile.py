@@ -591,7 +591,7 @@ def Tensile(userArgs):
 
     if IsaVersion(9,5,0) in isaList:
         printWarning("HardwareMonitor currently disabled for gfx950")
-        globalParameters["HardwareMonitor"] = False
+        globalParameters["HardwareMonitor"] = True
 
     isaInfoMap = makeIsaInfoMap(isaList, cxxCompiler)
     assignGlobalParameters(config.get("GlobalParameters", {}), isaInfoMap)

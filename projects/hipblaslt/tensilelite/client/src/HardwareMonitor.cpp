@@ -24,7 +24,6 @@
  *
  *******************************************************************************/
 
-#include "HardwareMonitor.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -32,9 +31,9 @@
 #include <unistd.h>
 
 #include <hip/hip_runtime.h>
-
 #include <Tensile/hip/HipUtils.hpp>
 
+#include "HardwareMonitor.hpp"
 #include "ResultReporter.hpp"
 
 #define RSMI_CHECK_EXC(expr)                                                                      \
@@ -53,6 +52,21 @@
         }                                                                                         \
     } while(0)
 
+#define AMDSMI_CHECK_EXC(expr)                                                                      \
+    do                                                                                            \
+    {                                                                                             \
+        amdsmi_status_t e = (expr);                                                                 \
+        if(e)                                                                                     \
+        {                                                                                         \
+            const char* errName = nullptr;                                                        \
+            amdsmi_status_code_to_string(e, &errName);                                                      \
+            std::ostringstream msg;                                                               \
+            msg << "Error " << e << "(" << errName << ") " << __FILE__ << ":" << __LINE__ << ": " \
+                << std::endl                                                                      \
+                << #expr << std::endl;                                                            \
+            throw std::runtime_error(msg.str());                                                  \
+        }                                                                                         \
+    } while(0)
 namespace TensileLite
 {
     namespace Client
@@ -60,6 +74,7 @@ namespace TensileLite
         uint32_t HardwareMonitor::GetROCmSMIIndex(int hipDeviceIndex)
         {
             InitROCmSMI();
+            std::cout << "DS: ------------------------------" << std::endl;
 
             hipDeviceProp_t props;
 
@@ -87,6 +102,13 @@ namespace TensileLite
             uint32_t smiCount = 0;
 
             RSMI_CHECK_EXC(rsmi_num_monitor_devices(&smiCount));
+
+            uint32_t        smiSocketCount{};
+            AMDSMI_CHECK_EXC(amdsmi_get_socket_handles(&smiSocketCount, nullptr));
+
+            std::cout << "DS: SMI Socket Count:  " << smiSocketCount << std::endl;
+            socketHandle.resize(smiSocketCount);
+            AMDSMI_CHECK_EXC(amdsmi_get_socket_handles(&smiSocketCount, &socketHandle[0]));
 
             std::ostringstream msg;
             msg << "PCI IDs: [" << std::endl;
@@ -122,8 +144,11 @@ namespace TensileLite
 
         void HardwareMonitor::InitROCmSMI()
         {
-            static rsmi_status_t status = rsmi_init(0);
-            RSMI_CHECK_EXC(status);
+            static rsmi_status_t status0 = rsmi_init(0);
+			// AMDSMI_INIT_ALL_PROCESSORS
+			static amdsmi_status_t status = amdsmi_init(0);
+			std::cout << "DS: Hardware Monitor init is done "<< std::endl;
+            AMDSMI_CHECK_EXC(status);
         }
 
         HardwareMonitor::HardwareMonitor(int hipDeviceIndex, clock::duration minPeriod)
