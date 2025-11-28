@@ -235,6 +235,7 @@ class TestCustomScheduleValidation:
         assert status == False
 
 
+class TestVerifyLRsDoneInTime:
     def test_simple_LR0(self):
         """
         Verify the simple case where both LRA0 and LRB0 are issued and finished before the halfway point of the main loop.
@@ -254,9 +255,7 @@ class TestCustomScheduleValidation:
         syncCode = [
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
         ]
-        sched = ScheduleInfo(
-            1, 8, optSchedule, syncCode, None, None, None
-        )
+        sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
 
@@ -289,9 +288,7 @@ class TestCustomScheduleValidation:
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
         ]
-        sched = ScheduleInfo(
-            1, 8, optSchedule, syncCode, None, None, None
-        )
+        sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation 1/2 but did not. {message}"
 
@@ -320,9 +317,7 @@ class TestCustomScheduleValidation:
             SWaitCnt(dscnt=1, vlcnt=-1, vscnt=-1, comment=""),
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
         ]
-        sched = ScheduleInfo(
-            1, 8, optSchedule, syncCode, None, None, None
-        )
+        sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
 
@@ -344,9 +339,7 @@ class TestCustomScheduleValidation:
         syncCode = [
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
         ]
-        sched = ScheduleInfo(
-            1, 8, optSchedule, syncCode, None, None, None
-        )
+        sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
 
@@ -361,9 +354,7 @@ class TestCustomScheduleValidation:
             "LRA1": [[4]],
         }
         syncCode = []
-        sched = ScheduleInfo(
-            1, 8, optSchedule, syncCode, None, None, None
-        )
+        sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert not status, f"Schedule should have failed (LRA1 never guaranteed), but passed. {message}"
 
@@ -385,16 +376,30 @@ class TestCustomScheduleValidation:
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="2/2 LRB1"),
             SWaitCnt(dscnt=1, vlcnt=-1, vscnt=-1, comment="2/2 LRA1 and 1/2 LRB1"),
         ]
-        sched = ScheduleInfo(
-            1, 8, optSchedule, syncCode, None, None, None
-        )
+        sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
 
     def test_more_LRs(self):
+        """
+        Case where each LR reads less than 1 WaveTile worth of data.
+        """
+        # TODO: A and B both read less
+
+        # TODO: A reads less
+
+        # TODO: B reads less
         raise NotImplementedError("Not implemented")
     
     def test_less_LRs(self):
+        """
+        Case where each LR reads more than 1 WaveTile worth of data.
+        """
+        # TODO: A and B both read more
+
+        # TODO: A reads more
+
+        # TODO: B reads more
         raise NotImplementedError("Not implemented")
 
     def test_simple_LR2(self):
