@@ -348,19 +348,25 @@ class TestVerifyLRsDoneInTime:
         num_vmfma = 2 * kernel["MIWaveTileA"] * kernel["MIWaveTileB"]
 
         optSchedule = {
-            "SYNC": [[-1, 1]],
+            "SYNC": [[-1, 3]],
             "LRA0": [[0, 0]],
             "LRB0": [[0, 0]],
-            "LRA1": [[4, 4]],
-            "LRB1": [[4, 4]],
+            "LRA1": [[0, 0]],
+            "LRB1": [[0, 0]],
         }
         syncCode = [
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
-            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
+            SWaitCnt(dscnt=4, vlcnt=-1, vscnt=-1, comment=""),
         ]
         sched = ScheduleInfo(1, num_vmfma, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert status, f"Schedule should have passed validation but did not. {message}"
+
+    def test_pre_loop_LR(self):
+        """
+        Case where an LR is issued before the start of the loop (idx=-1).
+        """
+        raise NotImplementedError("TODO: Implement test_pre_loop_LR")
 
     def test_simple_LR1_never_guaranteed(self):
         """
