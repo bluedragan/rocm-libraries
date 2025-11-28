@@ -47,25 +47,6 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
     Ensure that the A and B data needed for VMFA at index=i is guaranteed to be done before index=i.
     """
     from Tensile.SolutionStructs import Solution
-    numVMFMA = schedule_info.numMfma
-    halfwayPoint = numVMFMA // 2
-
-    kernel: Solution = context["kernel"]
-    nLRA = kernel['NumLoadsA']
-    nLRB = kernel['NumLoadsB']
-    nTilesA = kernel['MIWaveTileA']
-    nTilesB = kernel['MIWaveTileB']
-
-    # How many MFMA worth of data is loaded by each LRA/LRB
-    n_tiles_per_LRA = nTilesA / nLRA
-    n_tiles_per_LRB = nTilesB / nLRB
-
-    # Note: this is based on the current bahaviour where we iterate through A faster than B.
-    def index_LRA_needed_by_mfma(LRA_idx: int, offset: int) -> int:
-        return int(LRA_idx * n_tiles_per_LRA) + offset
-    
-    def index_LRB_needed_by_mfma(LRB_idx: int, offset: int) -> int:
-        return nTilesA * int(LRB_idx * n_tiles_per_LRB) + offset
 
     @dataclass
     class LocalRead:
@@ -82,6 +63,28 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
     def get(name: str, code_path: int) -> list[list[int] ]:
         l = schedule_info.optSchedule[name]
         return l[0] if len(l) == 1 else l[code_path]
+
+    numVMFMA = schedule_info.numMfma
+    halfwayPoint = numVMFMA // 2
+
+    kernel: Solution = context["kernel"]
+    nTilesA = kernel['MIWaveTileA']
+    nTilesB = kernel['MIWaveTileB']
+    # TODO: Is there a way to get the correct number from some metadata?
+    #       This pass may not work properly if the user provided the wrong number of LRs.
+    nLRA = len(get("LRA0", 0))
+    nLRB = len(get("LRB0", 0))
+    
+    # How many MFMA worth of data is loaded by each LRA/LRB
+    n_tiles_per_LRA = nTilesA / nLRA
+    n_tiles_per_LRB = nTilesB / nLRB
+
+    # Note: this is based on the current bahaviour where we iterate through A faster than B.
+    def index_LRA_needed_by_mfma(LRA_idx: int, offset: int) -> int:
+        return int(LRA_idx * n_tiles_per_LRA) + offset
+    
+    def index_LRB_needed_by_mfma(LRB_idx: int, offset: int) -> int:
+        return nTilesA * int(LRB_idx * n_tiles_per_LRB) + offset
     
     def verify(schedule_info: 'ScheduleInfo', code_path: int) -> tuple[bool, str]:
         # 0. Checks

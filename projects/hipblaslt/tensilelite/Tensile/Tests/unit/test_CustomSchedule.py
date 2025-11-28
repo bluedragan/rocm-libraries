@@ -38,8 +38,6 @@ def create_base_kernel():
         "ForceUnrollSubIter": False,
         "SwapGlobalReadOrder": False, # For asserting it gets set
         "UsePLRPack": False, # For asserting it gets set
-        "NumLoadsA": 1,
-        "NumLoadsB": 1,
         "MIWaveTileA": 1,
         "MIWaveTileB": 1,
     }
