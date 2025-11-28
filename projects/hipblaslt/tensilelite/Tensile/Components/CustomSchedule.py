@@ -557,7 +557,7 @@ def _get_schedule_192x256x64_16bit(kernel, useLDSTr, TLDS):
         # i.e. GRA contains GR for B
         kernel["SwapGlobalReadOrder"] = True
         optSchedule = {
-            'SYNC'    : [[12,13, 47,48,49,50,51, 52,53, 56,56, 94]],
+            'SYNC'    : [[12,13, 47,48,49,50,51, 52,53, 56,56, 66,66, 95]],
             'GRIncB' : [[0,1,2,3,4,5,6,7,8]],
             'GRIncA' : [[9,10,11,12,13,14,15,16,17]],
             'LRB0'   : [[0,0,1,1,2,2,6,8],
@@ -588,9 +588,12 @@ def _get_schedule_192x256x64_16bit(kernel, useLDSTr, TLDS):
                     SWaitCnt(dscnt=2, vlcnt=-1, vscnt=-1, comment="Wait for LRA0 to complete"),
                     SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="Wait for LRA0 to complete"),
                     SBarrier(comment=""),
-                    SWaitCnt(dscnt=-1, vlcnt=9, vscnt=-1, comment="Wait for LRB0 to complete"),
+                    SWaitCnt(dscnt=-1, vlcnt=8+1, vscnt=-1, comment="Wait for GRA to complete"),
                     SBarrier(comment=""),
-                    SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="Wait for LRB0 to complete"),]
+                    SWaitCnt(dscnt=-1, vlcnt=14+1, vscnt=-1, comment="Wait for GRB to complete"),
+                    SBarrier(comment=""),
+                    SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="Wait for LRA0 to complete"),
+        ]
         nglshift = nllshift = 14 # vmcnt shift for ngl and nll
     elif isNT(kernel) and not useLDSTr and TLDS == 0:
         kernel["UsePLRPack"] = True
