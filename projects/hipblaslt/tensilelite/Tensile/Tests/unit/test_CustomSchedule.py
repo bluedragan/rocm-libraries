@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import MagicMock
 
+from rocisa.instruction import SWaitCnt
+
 from Tensile.Components.CustomSchedule import hasCustomSchedule, ScheduleInfo, verifyAscendingOrder, verifyLRsDoneInTime
 from Tensile.Common import IsaVersion
 
@@ -38,8 +40,8 @@ def create_base_kernel():
         "ForceUnrollSubIter": False,
         "SwapGlobalReadOrder": False, # For asserting it gets set
         "UsePLRPack": False, # For asserting it gets set
-        "MIWaveTileA": 1,
-        "MIWaveTileB": 1,
+        "MIWaveTileA": 2,
+        "MIWaveTileB": 2,
     }
     return kernel
 
@@ -65,7 +67,7 @@ class TestCustomSchedule:
             "MacroTile0": 256, "MacroTile1": 256, "DepthU": 64,
             "PrefetchGlobalRead": 2, "PrefetchLocalRead": 1, "DirectToLds": True,
             "GlobalReadVectorWidthA": 8, "GlobalReadVectorWidthB": 8, "LocalReadVectorWidth": 8,
-            "MatrixInstruction": [16,16,32,1], "MIWaveGroup": [2,2], "TransposeLDS": 1
+            "MatrixInstruction": [16,16,32,1], "MIWaveGroup": [2,2], "TransposeLDS": 1, "MIWaveTileA": 8, "MIWaveTileB": 8,
         })
 
         has_schedule, schedule_info = hasCustomSchedule(kernel)
@@ -91,7 +93,7 @@ class TestCustomSchedule:
             "PrefetchGlobalRead": 2, "PrefetchLocalRead": 1, "DirectToLds": True,
             "GlobalReadVectorWidthA": 8, "GlobalReadVectorWidthB": 8, "LocalReadVectorWidth": 8,
             "MatrixInstruction": [16,16,32,1], "MIWaveGroup": [2,2],
-            "LDSTrInst": False, "TransposeLDS": 0
+            "LDSTrInst": False, "TransposeLDS": 0, "MIWaveTileA": 8, "MIWaveTileB": 8,
         })
 
         has_schedule, schedule_info = hasCustomSchedule(kernel)
@@ -118,7 +120,7 @@ class TestCustomSchedule:
             "PrefetchGlobalRead": 2, "PrefetchLocalRead": 1, "DirectToLds": True,
             "GlobalReadVectorWidthA": 8, "GlobalReadVectorWidthB": 8, "LocalReadVectorWidth": 8,
             "MatrixInstruction": [16,16,32,1], "MIWaveGroup": [2,2],
-            "LDSTrInst": False, "TransposeLDS": 1
+            "LDSTrInst": False, "TransposeLDS": 1, "MIWaveTileA": 8, "MIWaveTileB": 8,
         })
 
         has_schedule, schedule_info = hasCustomSchedule(kernel)
@@ -150,7 +152,7 @@ class TestCustomSchedule:
             "MacroTile0": 256, "MacroTile1": 256, "DepthU": 128,
             "PrefetchGlobalRead": 2, "PrefetchLocalRead": 0, "DirectToLds": True,
             "GlobalReadVectorWidthA": 16, "GlobalReadVectorWidthB": 16, "LocalReadVectorWidth": 16,
-            "MatrixInstruction": [16,16,128,1], "MIWaveGroup": [2,2], "TransposeLDS": 1
+            "MatrixInstruction": [16,16,128,1], "MIWaveGroup": [2,2], "TransposeLDS": 1, "MIWaveTileA": 8, "MIWaveTileB": 8,
         })
 
         has_schedule, schedule_info = hasCustomSchedule(kernel)
@@ -175,7 +177,7 @@ class TestCustomSchedule:
             "PrefetchGlobalRead": 2, "PrefetchLocalRead": 1, "DirectToLds": True,
             "GlobalReadVectorWidthA": 8, "GlobalReadVectorWidthB": 8, "LocalReadVectorWidth": 8,
             "MatrixInstruction": [16,16,32,1], "MIWaveGroup": [2,2],
-            "LDSTrInst": True, "TransposeLDS": 1
+            "LDSTrInst": True, "TransposeLDS": 1, "MIWaveTileA": 6, "MIWaveTileB": 8,
         })
 
         has_schedule, schedule_info = hasCustomSchedule(kernel)
@@ -238,11 +240,7 @@ class TestVerifyLRsDoneInTime:
         """
         Verify the simple case where both LRA0 and LRB0 are issued and finished before the halfway point of the main loop.
         """
-        from rocisa.instruction import SWaitCnt
-
         kernel = create_base_kernel()
-        kernel['MIWaveTileA'] = 2
-        kernel['MIWaveTileB'] = 2
         
         optSchedule = {
             "SYNC": [[3]],
@@ -270,11 +268,7 @@ class TestVerifyLRsDoneInTime:
         """
         Handle case where we start reading LRA1 before halfway point.
         """
-        from rocisa.instruction import SWaitCnt
-
         kernel = create_base_kernel()
-        kernel['MIWaveTileA'] = 2
-        kernel['MIWaveTileB'] = 2
         
         optSchedule = {
             "SYNC": [[3, 7]],
@@ -300,11 +294,7 @@ class TestVerifyLRsDoneInTime:
         """
         2nd LRB0 is not needed until iteration 6 & 7
         """
-        from rocisa.instruction import SWaitCnt
-
         kernel = create_base_kernel()
-        kernel['MIWaveTileA'] = 2
-        kernel['MIWaveTileB'] = 2
 
         optSchedule = {
             "SYNC": [[3, 4]],
@@ -324,17 +314,17 @@ class TestVerifyLRsDoneInTime:
         """
         Case where LR1 is finished before the end of loop.
         """
-        from rocisa.instruction import SWaitCnt
         kernel = create_base_kernel()
-        kernel['MIWaveTileA'] = 2
-        kernel['MIWaveTileB'] = 2
 
         optSchedule = {
-            "SYNC": [[7]],
+            "SYNC": [[1, 7]],
+            "LRA0": [[0, 0]],
+            "LRB0": [[0, 0]],
             "LRA1": [[4, 4]],
             "LRB1": [[4, 4]],
         }
         syncCode = [
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
         ]
         sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
@@ -348,10 +338,14 @@ class TestVerifyLRsDoneInTime:
         kernel = create_base_kernel()
 
         optSchedule = {
-            "SYNC": [[]],
-            "LRA1": [[4]],
+            "SYNC": [[1]],
+            "LRA0": [[0, 0]],
+            "LRB0": [[0, 0]],
+            "LRA1": [[4, 4]],
         }
-        syncCode = []
+        syncCode = [
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment=""),
+        ]
         sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
         status, message = verifyLRsDoneInTime(sched, {"kernel": kernel})
         assert not status, f"Schedule should have failed (LRA1 never guaranteed), but passed. {message}"
@@ -360,18 +354,18 @@ class TestVerifyLRsDoneInTime:
         """
         Case where LR1 finishes during the beginning of next iteration.
         """
-        from rocisa.instruction import SWaitCnt
         kernel = create_base_kernel()
-        kernel['MIWaveTileA'] = 2
-        kernel['MIWaveTileB'] = 2
 
         optSchedule = {
-            "SYNC": [[1, 7]],
+            "SYNC": [[1, 3, 7]],
+            "LRA0": [[2, 2]],
+            "LRB0": [[2, 2]],
             "LRA1": [[4, 4]],
             "LRB1": [[4, 4]],
         }
         syncCode = [
             SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="2/2 LRB1"),
+            SWaitCnt(dscnt=0, vlcnt=-1, vscnt=-1, comment="All of LRA0 and LRB0"),
             SWaitCnt(dscnt=1, vlcnt=-1, vscnt=-1, comment="2/2 LRA1 and 1/2 LRB1"),
         ]
         sched = ScheduleInfo(1, 8, optSchedule, syncCode, None, None, None)
