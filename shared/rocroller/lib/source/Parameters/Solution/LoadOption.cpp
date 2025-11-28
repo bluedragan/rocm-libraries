@@ -44,8 +44,10 @@ namespace rocRoller
                     return MemoryType::WAVE_LDS;
                 case LoadPath::BufferToLDS:
                     return MemoryType::WAVE_Direct2LDS;
+                case LoadPath::GlobalToVGPR:
+                    return MemoryType::VGPR_FROM_GLOBAL;
                 case LoadPath::Count:
-                    Throw<FatalError>(fmt::format("No valid MemoryType available for LDS mode {}\n",
+                    Throw<FatalError>(fmt::format("No valid MemoryType available for mode {}\n",
                                                   toString(mode)));
                 }
             }

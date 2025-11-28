@@ -161,6 +161,7 @@ namespace rocRoller
         WAVE_SPLIT,
         WAVE_Direct2LDS,
         WAVE_SWIZZLE,
+        VGPR_FROM_GLOBAL,
         Literal,
         None,
         Count

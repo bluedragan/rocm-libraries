@@ -40,6 +40,7 @@ namespace rocRoller
                 BufferToVGPR,
                 BufferToLDSViaVGPR,
                 BufferToLDS,
+                GlobalToVGPR,
                 Count,
             };
 

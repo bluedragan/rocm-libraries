@@ -240,6 +240,8 @@ namespace rocRoller
             return "WAVE_Direct2LDS";
         case MemoryType::WAVE_SWIZZLE:
             return "WAVE_SWIZZLE";
+        case MemoryType::WAVE_FROM_GLOBAL:
+            return "WAVE_FROM_GLOBAL";
         case MemoryType::Literal:
             return "Literal";
         case MemoryType::None:

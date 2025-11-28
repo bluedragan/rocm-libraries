@@ -1841,6 +1841,7 @@ namespace rocRoller
                 switch(tile.memoryType)
                 {
                 case MemoryType::VGPR:
+                case MemoryType::WAVE_FROM_GLOBAL:
                     loadMacroTile_VGPR(
                         graph, connections, userTag, tileTag, sdims, {1, 1}, m_params, m_context);
                     break;
