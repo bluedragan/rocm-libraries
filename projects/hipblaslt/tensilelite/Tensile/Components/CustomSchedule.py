@@ -87,15 +87,14 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
         return nTilesA * int(LRB_idx * n_tiles_per_LRB) + offset
     
     def verify(schedule_info: 'ScheduleInfo', code_path: int) -> tuple[bool, str]:
-        # 0. Checks
         # Note: Order must not be changed, its based on the order in which the LR instructions are included in the assembly.
         implemented_names = ["LRA0", "LRB0", "LRA1", "LRB1"]
-        LR_names = [name for name in schedule_info.optSchedule.keys() if name.startswith("LR")]
+        LR_names = [name for name in schedule_info.optSchedule.keys() if name.startswith("LRA") or name.startswith("LRB")]
         assert all(name in implemented_names for name in LR_names), f"LocalReads {LR_names} not implemented"
 
         LR_names.sort(key=lambda x: implemented_names.index(x))
         
-        # 1. Find all localreads and place in timeline
+        # Find all localreads and place in schedule
         schedule = [[] for _ in range(schedule_info.numMfma)]
         for name in LR_names:            
             offset = halfwayPoint if "0" in name else numVMFMA
@@ -105,7 +104,7 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
                 LR = LocalRead(name=name, issued_at=idx_VMFMA, needed_by=needed_by(idx_LR, offset))
                 schedule[idx_VMFMA].append(LR)
 
-        # 2. Traverse timeline and apply effect of SWaitCnts
+        # Traverse timeline and apply effect of SWaitCnts
         for idx, sync in zip(get("SYNC", code_path), schedule_info.syncCode):
             if not isinstance(sync, SWaitCnt):
                 continue
@@ -130,7 +129,11 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
         for LRs in schedule:
             for LR in LRs:
                 if not LR.isValid():
-                    return False, f"{LR.name} at index {LR.issued_at} is not valid. Needed by index {LR.needed_by}, but only guaranteed by index {LR.guaranteed_by}."
+                    # Modulo for LRs that finish in next iteration.
+                    issued_at = LR.issued_at % numVMFMA
+                    needed_by = LR.needed_by % numVMFMA
+                    guaranteed_by = LR.guaranteed_by % numVMFMA
+                    return False, f"Code path {code_path}: {LR.name} at index {issued_at} is not valid. Needed by index {needed_by}, but only guaranteed by index {guaranteed_by}."
         return True, ""
     
     for code_path in range(schedule_info.numCodePaths):
