@@ -132,8 +132,15 @@ def verifyLRsDoneInTime(schedule_info: 'ScheduleInfo', context: dict) -> tuple[b
                     # Modulo for LRs that finish in next iteration.
                     issued_at = LR.issued_at % numVMFMA
                     needed_by = LR.needed_by % numVMFMA
-                    guaranteed_by = LR.guaranteed_by % numVMFMA
-                    return False, f"Code path {code_path}: {LR.name} at index {issued_at} is not valid. Needed by index {needed_by}, but only guaranteed by index {guaranteed_by}."
+                    if LR.guaranteed_by == float('inf'):
+                        message = f"Code path {code_path}: {LR.name} at index {issued_at} is not valid. " + \
+                                  "There are no guaranteed on when it will be done."
+                    else:
+                        guaranteed_by = LR.guaranteed_by % numVMFMA
+                        message = f"Code path {code_path}: {LR.name} at index {issued_at} is not valid. " + \
+                                    f"Needed by index {needed_by}, but only guaranteed by index {guaranteed_by}."
+                    return False, message
+                    
         return True, ""
     
     for code_path in range(schedule_info.numCodePaths):
