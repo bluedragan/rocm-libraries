@@ -28,6 +28,12 @@
 #include <math.h>
 #include <type_traits>
 
+/*
+#if defined(__powerpc__)
+#define _Float16 __fp16
+#endif
+*/
+
 #ifdef __HIP_PLATFORM_NVIDIA__
 typedef __half rocfft_fp16;
 #else

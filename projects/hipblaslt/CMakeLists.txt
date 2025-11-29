@@ -13,6 +13,12 @@ else()
     set(HIPBLASLT_IS_SUBPROJECT TRUE)
 endif()
 
+# add_definitions(-DNO_WARN_X86_INTRINSICS)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+  message(STATUS "PowerPC64LE detected — enabling Altivec/VSX and disabling x86 intrinsic warnings")
+  add_compile_options(-maltivec -mvsx -mcpu=power10)
+  add_compile_definitions(NO_WARN_X86_INTRINSICS)
+endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(GNUInstallDirs)

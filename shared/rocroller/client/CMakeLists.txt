@@ -43,7 +43,7 @@ target_link_libraries(rocroller-gemm
         CLI11::CLI11
         ${BLAS_LIBRARIES}
 )
-target_include_directories(rocroller-gemm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(rocroller-gemm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include" "/home/rocm-apps/opt/rocm-apps/include/")
 
 if(ROCROLLER_BUILD_SHARED_LIBS) # why?
     target_link_libraries(rocroller-gemm PUBLIC ${llvm_yaml_libs})

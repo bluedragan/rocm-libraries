@@ -23,3 +23,19 @@ add_custom_command(
 
 add_custom_target(hipblaslt-test-data DEPENDS ${HIPBLASLT_TEST_DATA})
 add_dependencies(hipblaslt-test hipblaslt-test-data)
+
+# target_include_directories(hipblaslt-test PRIVATE /home/rocm-apps/opt/rocm-apps/googletest/include/)
+# Added HINTS /home/rocm-apps/opt/rocm-apps/googletest/lib64/cmake/GTest below
+# set(GTest_DIR "/home/rocm-apps/opt/rocm-apps/googletest/lib64/cmake/GTest" CACHE PATH "Path to GTest")
+# find_package(GTest REQUIRED)
+# find_package(GTest REQUIRED HINTS /home/rocm-apps/opt/rocm-apps/googletest/lib64/cmake/GTest)
+# Added
+# include_directories(${GTEST_INCLUDE_DIRS})
+# target_link_libraries(hipblaslt-test
+#       PRIVATE
+#           GTest::gtest
+#           GTest::gtest_main
+#           pthread
+#   )
+# Add end
+

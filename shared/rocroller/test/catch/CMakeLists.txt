@@ -1,7 +1,7 @@
 # Copyright Advanced Micro Devices, Inc., or its affiliates.
 # SPDX-License-Identifier:  MIT
 
-find_package(Catch2 QUIET)
+find_package(Catch2 QUIET HINTS /home/rocm-apps/opt/rocm-apps/lib64/cmake/Catch2)
 if(NOT Catch2_FOUND)
     if(ROCROLLER_ENABLE_FETCH)
         FetchContent_Declare(

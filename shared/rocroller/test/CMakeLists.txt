@@ -1,7 +1,7 @@
 # Copyright Advanced Micro Devices, Inc., or its affiliates.
 # SPDX-License-Identifier:  MIT
 
-find_package(GTest QUIET)
+find_package(GTest QUIET HINTS /home/rocm-apps/opt/rocm-apps/googletest/lib64/cmake/GTest)
 if(NOT GTest_FOUND)
     if(ROCROLLER_ENABLE_FETCH)
         FetchContent_Declare(

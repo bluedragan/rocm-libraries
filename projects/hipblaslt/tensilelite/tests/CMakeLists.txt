@@ -1,7 +1,8 @@
 # Copyright Advanced Micro Devices, Inc., or its affiliates.
 # SPDX-License-Identifier:  MIT
 
-find_package(GTest REQUIRED)
+# find_package(GTest REQUIRED)
+find_package(GTest REQUIRED HINTS /home/rocm-apps/opt/rocm-apps/googletest/lib64/cmake/GTest)
 find_package(Boost REQUIRED COMPONENTS filesystem)
 
 add_executable(tensilelite-tests)
@@ -32,7 +33,8 @@ target_sources(tensilelite-tests
         "${CMAKE_CURRENT_SOURCE_DIR}/include/TestUtils.hpp"
 )
 
-target_include_directories(tensilelite-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+# target_include_directories(tensilelite-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(tensilelite-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include" /home/rocm-apps/opt/rocm-apps/googletest/include/)
 
 if(HIPBLASLT_ENABLE_LLVM OR HIPBLASLT_ENABLE_MSGPACK)
     target_sources(tensilelite-tests
@@ -50,8 +52,10 @@ target_link_libraries(tensilelite-tests
         ${CMAKE_DL_LIBS}
 )
 
+include(GoogleTest)
 gtest_discover_tests(tensilelite-tests WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} TIMEOUT 60)
 
+find_package(GTest REQUIRED HINTS /home/rocm-apps/opt/rocm-apps/googletest/lib64/cmake/GTest)
 target_link_libraries(tensilelite-tests PUBLIC GTest::gtest)
 
 if(HIPBLASLT_ENABLE_OPENMP)

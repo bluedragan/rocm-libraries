@@ -4,6 +4,12 @@
 add_library(common-test-utilities OBJECT)
 add_library(rocroller::common-test-utilities ALIAS common-test-utilities)
 
+#Add by Calvin Sze
+target_include_directories(common-test-utilities
+PRIVATE
+    /usr/include/openblas
+)
+
 target_link_libraries(common-test-utilities
     PUBLIC
         roc::rocroller-interface

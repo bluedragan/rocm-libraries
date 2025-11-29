@@ -11,9 +11,14 @@ if(UNIX)
     endif()
 
     # Unix/Linux: Use ROCm LLVM Clang
-    set(ROCM_LLVM_BIN_DIR ${ROCM_PATH}/llvm/bin)
-    set(ROCM_LLVM_LIB_DIR ${ROCM_PATH}/llvm/lib)
+    # set(ROCM_LLVM_BIN_DIR ${ROCM_PATH}/llvm/bin)
+    # set(ROCM_LLVM_LIB_DIR ${ROCM_PATH}/llvm/lib)
 
+    # set(ROCM_LLVM_BIN_DIR ${ROCM_PATH}/bin)
+    # set(ROCM_LLVM_LIB_DIR ${ROCM_PATH}/lib)
+
+    set(ROCM_LLVM_BIN_DIR "/home/rocm/opt/rocm/bin")
+    set(ROCM_LLVM_LIB_DIR "/home/rocm/opt/rocm/lib")
 
     message(STATUS "ROCM_LLVM_BIN_DIR"=${ROCM_LLVM_BIN_DIR})
     if(EXISTS ${ROCM_LLVM_BIN_DIR})
@@ -24,7 +29,9 @@ if(UNIX)
         findAndCheckLlvmSymbolizer()
         
         message(STATUS "Using ROCm Clang compilers from ${ROCM_LLVM_BIN_DIR}")
+        message(STATUS "1ROCM_LLVM_BIN_DIR"=${ROCM_LLVM_BIN_DIR})
     else()
+        message(STATUS "ROCM_LLVM_BIN_DIR"=${ROCM_LLVM_BIN_DIR})
         message(FATAL_ERROR "The directory ${ROCM_LLVM_BIN_DIR} does not exist. Cannot auto select clang compilers.")
     endif()
 

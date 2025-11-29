@@ -30,9 +30,7 @@
 #include <hip/hip_runtime.h>
 #include <hipblaslt/hipblaslt.h>
 #include <hipblaslt/hipblaslt_xfloat32.h>
-#ifndef __HIP_DEVICE_COMPILE__
 #include <immintrin.h>
-#endif
 #include <type_traits>
 
 /* ============================================================================================ */

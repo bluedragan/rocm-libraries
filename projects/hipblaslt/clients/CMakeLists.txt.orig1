@@ -1,0 +1,34 @@
+if(BUILD_TESTING OR HIPBLASLT_BUILD_TESTING)
+	message(USE_ROCM4="++++++++++++++++++++++++ I am here +++++++++++++++++++++++")
+    # add_executable(hipblaslt-test)
+    # Added HINTS /home/rocm-apps/opt/rocm-apps/googletest/lib64/cmake/GTest below
+    find_package(GTest REQUIRED HINTS /home/rocm-apps/opt/rocm-apps/googletest/lib64/cmake/GTest)  
+    # Added
+    #include_directories(${GTEST_INCLUDE_DIRS})
+    #target_link_libraries(hipblaslt-test
+    # PRIVATE
+    #   GTest::gtest
+    #   GTest::gtest_main
+    #   pthread
+    #)
+    # Add end
+    add_executable(hipblaslt-test)
+    if(rocm_smi_FOUND)
+       target_link_libraries(hipblaslt-test PRIVATE rocm_smi64)
+    endif()
+    target_link_libraries(hipblaslt-test
+	    PUBLIC
+	    # hip::device
+	    # hipblaslt::hipblaslt-clients-common
+            GTest:gtest
+            GTest:gtest_main
+	    # OpenMP::OpenMP_CXX
+	    # ${CMAKE_DL_LIBS}
+    )
+    # target_compile_definitions(hipblaslt-test PRIVATE GOOGLE_TEST)
+    # if(HIPBLASLT_ENABLE_ROCROLLER)
+    #    target_compile_definitions(hipblaslt-test PRIVATE HIPBLASLT_USE_ROCROLLER)
+    # endif()
+    # add_subdirectory(tests)
+endif()
+

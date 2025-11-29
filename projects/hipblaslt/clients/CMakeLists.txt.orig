@@ -95,17 +95,29 @@ if(HIPBLASLT_ENABLE_LLVM)
     target_include_directories(hipblaslt-sequence PRIVATE ${LLVM_INCLUDE_DIRS})
 endif()
 if(BUILD_TESTING OR HIPBLASLT_BUILD_TESTING)
-    find_package(GTest REQUIRED HINTS /home/rocm-apps/opt/rocm-apps/googletest/lib64/cmake/GTest)
+	message(USE_ROCM4="++++++++++++++++++++++++ I am here +++++++++++++++++++++++")
+    # add_executable(hipblaslt-test)
+    # Added HINTS /home/rocm-apps/opt/rocm-apps/googletest/lib64/cmake/GTest below
+    find_package(GTest REQUIRED HINTS /home/rocm-apps/opt/rocm-apps/googletest/lib64/cmake/GTest)  
+    # Added
+    #target_link_libraries(hipblaslt-test
+    # PRIVATE
+    #   GTest::gtest
+    #   GTest::gtest_main
+    #   pthread
+    #)
+    # Add end
     add_executable(hipblaslt-test)
     target_include_directories(hipblaslt-test PRIVATE /home/rocm-apps/opt/rocm-apps/googletest/include/)
     if(rocm_smi_FOUND)
-        target_link_libraries(hipblaslt-test PRIVATE rocm_smi64)
+       target_link_libraries(hipblaslt-test PRIVATE rocm_smi64)
     endif()
     target_link_libraries(hipblaslt-test
-        PRIVATE
+	    PUBLIC
             hip::device
             hipblaslt::hipblaslt-clients-common
             GTest::gtest
+            GTest::gtest_main
             OpenMP::OpenMP_CXX
             ${CMAKE_DL_LIBS}
     )
@@ -119,7 +131,6 @@ endif()
 if(HIPBLASLT_ENABLE_SAMPLES)
     add_subdirectory(samples)
 endif()
-
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/tests/hipblaslt_gentest.py" "${CMAKE_CURRENT_BINARY_DIR}/hipblaslt_gentest.py" COPYONLY)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/tests/data/hipblaslt_common.yaml" "${CMAKE_CURRENT_BINARY_DIR}/hipblaslt_common.yaml" COPYONLY)

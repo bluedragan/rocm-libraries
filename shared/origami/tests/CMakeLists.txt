@@ -1,7 +1,8 @@
 # Copyright Advanced Micro Devices, Inc., or its affiliates.
 # SPDX-License-Identifier:  MIT
 
-find_package(GTest REQUIRED)
+# find_package(GTest REQUIRED)
+find_package(GTest REQUIRED HINTS /home/rocm-apps/opt/rocm-apps/googletest/lib64/cmake/GTest)
 find_package(Boost REQUIRED COMPONENTS filesystem)
 
 add_executable(origami-tests)
@@ -14,6 +15,7 @@ target_sources(origami-tests
 target_include_directories(origami-tests
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
+	"/home/rocm-apps/opt/rocm-apps/googletest/include/"
 )
 
 configure_file(
@@ -30,6 +32,7 @@ target_link_libraries(origami-tests
         GTest::gtest_main
 )
 
+include(GoogleTest)
 gtest_discover_tests(origami-tests 
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} 
     TIMEOUT 60

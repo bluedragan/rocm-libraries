@@ -6,6 +6,16 @@ set(ROCROLLER_VERSION 1.0.0)
 set(ROCROLLER_SOVERSION 1)
 project(rocroller VERSION ${ROCROLLER_VERSION} LANGUAGES CXX)
 
+# Always generate position-independent code
+# set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# For ppc64le, enlarge the code model
+# add_compile_options(-mcmodel=large)
+# add_link_options(-mcmodel=large)
+
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=lld")
+set(CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(CMakeRC)
@@ -102,7 +112,7 @@ if(NOT spdlog_FOUND)
     endif()
 endif()
 
-find_package(libdivide QUIET)
+find_package(libdivide QUIET HINTS "/home/rocm-apps/opt/rocm-apps/lib64/cmake/libdivide")
 if(NOT libdivide_FOUND)
 if(ROCROLLER_ENABLE_FETCH)
     FetchContent_Declare(
@@ -117,7 +127,7 @@ if(ROCROLLER_ENABLE_FETCH)
     endif()
 endif()
 
-find_package(msgpack-cxx CONFIG)
+find_package(msgpack-cxx CONFIG HINTS /home/rocm-apps/opt/rocm-apps/lib64/cmake/msgpack-cxx/)
 if(msgpack-cxx_FOUND)
     message(STATUS "Found msgpack-cxx (>=6.x)")
     set(msgpack_libs msgpack-cxx)

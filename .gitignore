@@ -2,3 +2,7 @@ __pycache__
 
 # Build directories
 _build/
+build/
+build1/
+**/build/
+**/build1/
