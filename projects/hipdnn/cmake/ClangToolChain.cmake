@@ -14,8 +14,6 @@ if(UNIX)
     set(ROCM_LLVM_BIN_DIR ${ROCM_PATH}/llvm/bin)
     set(ROCM_LLVM_LIB_DIR ${ROCM_PATH}/llvm/lib)
 
-
-    message(STATUS "ROCM_LLVM_BIN_DIR"=${ROCM_LLVM_BIN_DIR})
     if(EXISTS ${ROCM_LLVM_BIN_DIR})
         # Set the C and C++ compilers to clang and clang++ with a specific directory hint
         set(CMAKE_C_COMPILER ${ROCM_LLVM_BIN_DIR}/clang)
