@@ -1545,7 +1545,12 @@ void ref_geam_min_plus(rocblas_operation transA,
             {
                 size_t idxA = TRANSA ? size_t(lda) * m1 + k1 : size_t(lda) * k1 + m1;
                 size_t idxB = TRANSB ? size_t(ldb) * k1 + n1 : size_t(ldb) * n1 + k1;
+#if defined(__powerpc64__) || defined(__PPC64__)
+		auto val = alpha * (A[idxA] + B[idxB]);
+		D[idxD] = (val < (T)D[idxD]) ? (T)val : D[idxD];
+#else
                 D[idxD]     = std::min(alpha * (A[idxA] + B[idxB]), D[idxD]);
+#endif
             }
         }
     }

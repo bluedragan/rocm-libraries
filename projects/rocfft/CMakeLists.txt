@@ -19,7 +19,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 # #############################################################################
-
 cmake_minimum_required( VERSION 3.16 )
 
 # We use C++17 features, this will add compile option: -std=c++17
@@ -46,6 +45,7 @@ if( NOT DEFINED CMAKE_CONFIGURATION_TYPES AND NOT DEFINED CMAKE_BUILD_TYPE )
 endif()
 
 set( ROCFFT_BUILD_SCOPE ON )
+
 
 project( rocfft LANGUAGES CXX C )
 
@@ -172,9 +172,15 @@ set(GPU_TARGETS "${AMDGPU_TARGETS}" CACHE STRING "GPU architectures to build for
 find_package( hip REQUIRED CONFIG PATHS /opt/rocm/lib/cmake/hip/ )
 find_package( hiprtc REQUIRED CONFIG PATHS /opt/rocm/lib/cmake/hiprtc/ )
 
+ 
 # The nvidia backend can be used to compile for CUDA devices.
 # Specify the CUDA prefix in the CUDA_PREFIX variable.
 # CUDA_ARCH (e.g. sm_75) is also required.
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+  # Add -xhip ONLY to C++ files, ignoring C files like sqlite3.c
+  add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-xhip>")
+endif()
+
 if( USE_CUDA )
   if( NOT DEFINED CUDA_PREFIX )
     message( FATAL_ERROR "CUDA_PREFIX variable is required (e.g. /usr/local/cuda-11.4)" )
@@ -214,6 +220,12 @@ if( BUILD_CLIENTS )
   set( BUILD_CLIENTS_BENCH ON )
   set( BUILD_CLIENTS_SAMPLES ON )
   set( BUILD_CLIENTS_TESTS ON )
+else()
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+    set( BUILD_CLIENTS_BENCH OFF )
+    set( BUILD_CLIENTS_SAMPLES OFF )
+    set( BUILD_CLIENTS_TESTS OFF )
+  endif()
 endif( )
 
 # old name for BUILD_CLIENTS_BENCH
@@ -300,5 +312,6 @@ rocm_create_package(
     LDCONFIG
     LDCONFIG_DIR ${ROCFFT_CONFIG_DIR}
 )
+
 
 option(BUILD_CODE_COVERAGE "Build with code coverage flags (clang only)" OFF)

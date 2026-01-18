@@ -30,7 +30,13 @@
 #include <cmath>
 #include <hip/hip_runtime.h>
 #include <hipsparselt/hipsparselt.h>
+#if defined(__powerpc64__) || defined(__PPC64__)
+#ifndef __HIP_DEVICE_COMPILE__
 #include <immintrin.h>
+#endif // __HIP_DEVICE_COMPILE__
+#else
+#include <immintrin.h>
+#endif // defined(__powerpc64__) || defined(__PPC64__)
 #include <type_traits>
 
 /* ============================================================================================ */

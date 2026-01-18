@@ -66,7 +66,8 @@ endif()
 
 include( ROCMInstallTargets )
 
-set( bench_list rocfft-bench dyna-rocfft-bench )
+# set( bench_list rocfft-bench dyna-rocfft-bench )
+set( bench_list rocfft-bench)
 foreach( bench ${bench_list})
   if(${bench} STREQUAL "rocfft-bench")
     add_executable( ${bench} ../../shared/array_validator.cpp bench.cpp bench.h )

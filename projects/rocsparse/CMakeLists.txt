@@ -91,6 +91,12 @@ option(BUILD_WITH_ROCTX "Enable building rocSPARSE with rocTX" ON)
 option(BUILD_WITH_OFFLOAD_COMPRESS
        "Enable offload compression during compilation" ON)
 
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+  set(BUILD_CLIENTS_TESTS OFF)
+  set(BUILD_CLIENTS_BENCHMARKS OFF)
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/clients/matrices")
+endif()
 # Clients utilize rocsparse fortran API and a fortran compiler
 if( NOT BUILD_FORTRAN_CLIENTS )
   option( BUILD_FORTRAN_CLIENTS "Build rocSPARSE clients requiring Fortran capabilities" ON )
@@ -273,6 +279,14 @@ if( BUILD_CLIENTS_ONLY OR BUILD_CLIENTS_SAMPLES OR BUILD_CLIENTS_TESTS OR BUILD_
       RPM "${OPENMP_RPM}"
   )
   endif()
+  
+  if( NOT BUILD_CLIENTS_TESTS AND NOT BUILD_CLIENTS_BENCHMARKS )
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+      set (CMAKE_MATRICES_DIR="")
+    endif()
+  endif()
+
+
   if(BUILD_FORTRAN_CLIENTS)
     rocm_package_add_rpm_dependencies(COMPONENT tests DEPENDS "${GFORTRAN_RPM}")
     rocm_package_add_deb_dependencies(COMPONENT tests DEPENDS "${GFORTRAN_DEB}")
@@ -409,3 +423,4 @@ if(BUILD_CODE_COVERAGE)
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 endif()
+

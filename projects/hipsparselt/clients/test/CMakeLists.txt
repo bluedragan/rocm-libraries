@@ -21,7 +21,11 @@ target_compile_definitions(
                              "__HIP_HCC_COMPAT_MODE__=1"
 )
 
-target_compile_options(hipsparselt-test PRIVATE -mf16c)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+  target_compile_options(hipsparselt-test PRIVATE)
+else()
+  target_compile_options(hipsparselt-test PRIVATE -mf16c)
+endif()
 
 target_link_libraries(
     hipsparselt-test PRIVATE hipsparselt-clients-common GTest::gtest GTest::gtest_main

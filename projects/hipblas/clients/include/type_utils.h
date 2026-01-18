@@ -75,8 +75,23 @@ inline hipblasHalf float_to_half(float val)
 {
 #ifdef HIPBLAS_USE_HIP_HALF
     return __float2half(val);
-#else
+#elif defined(__x86_64__) || defined(__i386__)
     uint16_t a = _cvtss_sh(val, 0);
+    return a;
+#else
+    // Software fallback: Float32 (val) -> Half (a)
+    union { float f; uint32_t i; } u;
+    u.f = val; // Assign float
+    uint32_t i = u.i; // Get raw 32 bits
+    
+    uint32_t s = (i >> 16) & 0x00008000;
+    uint32_t e = ((i >> 23) & 0x000000ff) - (127 - 15);
+    uint32_t m = i & 0x007fffff;
+    uint16_t a;
+    
+    if (e <= 0) a = (uint16_t)s;
+    else if (e >= 31) a = (uint16_t)(s | 0x7c00);
+    else a = (uint16_t)(s | (e << 10) | (m >> 13));
     return a;
 #endif
 }
@@ -115,8 +130,21 @@ inline float half_to_float(hipblasHalf val)
 {
 #ifdef HIPBLAS_USE_HIP_HALF
     return __half2float(val);
-#else
+#elif defined(__x86_64__) || defined(__i386__)
     return _cvtsh_ss(val);
+#else
+    // Software fallback: Half bits (val) -> Float32
+    uint32_t h = (uint32_t)val;
+    uint32_t s = (h & 0x8000) << 16;
+    uint32_t e = (h & 0x7c00) >> 10;
+    uint32_t m = (h & 0x03ff) << 13;
+    union { uint32_t i; float f; } u;
+    
+    if (e == 0) u.i = s;
+    else if (e == 31) u.i = s | 0x7f800000 | m;
+    else u.i = s | ((e + (127 - 15)) << 23) | m;
+    
+    return u.f;
 #endif
 }
 

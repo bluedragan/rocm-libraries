@@ -30,7 +30,11 @@ endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # Enable F16C intrinsics
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+    target_compile_options(hipsparselt PRIVATE)
+  else()
     target_compile_options(hipsparselt PRIVATE -mf16c)
+  endif()
 endif()
 
 if(HIPSPARSELT_ENABLE_ASAN)
