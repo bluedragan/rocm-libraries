@@ -13,6 +13,10 @@ else()
     set(HIPBLASLT_IS_SUBPROJECT TRUE)
 endif()
 
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+  add_compile_options("-DNO_WARN_X86_INTRINSICS")
+endif()
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(hipblaslt_shim)

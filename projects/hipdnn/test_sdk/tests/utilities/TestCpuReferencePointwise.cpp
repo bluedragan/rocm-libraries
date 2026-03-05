@@ -1109,7 +1109,11 @@ protected:
                         auto xCompute = static_cast<ComputeType>(inputVal);
                         auto dyCompute = static_cast<ComputeType>(upstreamGradVal);
                         auto tanhVal = std::tanh(xCompute);
-                        auto localGradient = ComputeType{1} - (tanhVal * tanhVal);
+#if defined(__powerpc64__) || defined(__PPC64__)
+			auto localGradient = ComputeType{1} - static_cast<double>(tanhVal * tanhVal);
+#else
+			auto localGradient = ComputeType{1} - (tanhVal * tanhVal);
+#endif
                         auto downstreamGrad = dyCompute * localGradient;
                         expected.setHostValue(static_cast<OutputType>(downstreamGrad), n, c, h, w);
                     }

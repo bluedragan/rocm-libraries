@@ -43,6 +43,9 @@ if( NOT DEFINED CMAKE_CONFIGURATION_TYPES AND NOT DEFINED CMAKE_BUILD_TYPE )
 endif()
 
 project( hipblas LANGUAGES CXX )
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+  add_compile_options("-DNO_WARN_X86_INTRINSICS")
+endif()
 
 find_package(Python3 3.9 COMPONENTS Interpreter REQUIRED)
 

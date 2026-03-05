@@ -6,6 +6,9 @@ cmake_minimum_required(VERSION 3.25.2)
 option(CMAKE_EXPORT_COMPILE_COMMANDS "Generate compile commands json file." ON)
 
 project(hipsparselt VERSION 0.2.7 LANGUAGES CXX)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+  add_compile_options("-DNO_WARN_X86_INTRINSICS")
+endif()
 
 if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW) # FetchContent timestamp handling

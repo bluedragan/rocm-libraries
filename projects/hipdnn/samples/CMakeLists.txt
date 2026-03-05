@@ -9,6 +9,12 @@ cmake_minimum_required(VERSION 3.25.2)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 project(hipdnn_samples VERSION 0.1.0 LANGUAGES CXX)
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+    add_definitions(-D_Float16=float)
+    add_compile_options(-include "/home/rocm/src/TheRock/rocm-libraries/hip_ppc64le_fix.hpp")
+endif()
+
 include(GNUInstallDirs)
 set(CMAKE_CXX_STANDARD 17)
 

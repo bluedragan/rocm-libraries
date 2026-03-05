@@ -65,6 +65,11 @@ if( CMAKE_PROJECT_NAME STREQUAL "rocwmma" )
   option( ROCWMMA_CODE_COVERAGE "Build with code coverage flags (clang only)" OFF)
 endif()
 
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+  set( ROCWMMA_BUILD_TESTS OFF )
+  set( ROCWMMA_BUILD_SAMPLES OFF )
+endif()
+
 if( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
   set( CMAKE_INSTALL_PREFIX "/opt/rocm" CACHE PATH "Install path prefix, prepended onto install directories" FORCE )
 endif()

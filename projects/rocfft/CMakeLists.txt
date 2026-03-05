@@ -185,6 +185,10 @@ find_package( hiprtc REQUIRED CONFIG PATHS /opt/rocm/lib/cmake/hiprtc/ )
 # The nvidia backend can be used to compile for CUDA devices.
 # Specify the CUDA prefix in the CUDA_PREFIX variable.
 # CUDA_ARCH (e.g. sm_75) is also required.
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+  # Add -xhip ONLY to C++ files, ignoring C files like sqlite3.c
+  add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-xhip>")
+endif()
 if( USE_CUDA )
   if( NOT DEFINED CUDA_PREFIX )
     message( FATAL_ERROR "CUDA_PREFIX variable is required (e.g. /usr/local/cuda-11.4)" )
@@ -224,6 +228,12 @@ if( BUILD_CLIENTS )
   set( BUILD_CLIENTS_BENCH ON )
   set( BUILD_CLIENTS_SAMPLES ON )
   set( BUILD_CLIENTS_TESTS ON )
+  else()
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+    set( BUILD_CLIENTS_BENCH OFF )
+    set( BUILD_CLIENTS_SAMPLES OFF )
+    set( BUILD_CLIENTS_TESTS OFF )
+  endif()
 endif( )
 
 # old name for BUILD_CLIENTS_BENCH

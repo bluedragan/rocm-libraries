@@ -73,6 +73,11 @@ else()
     )
 endif()
 
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+    add_compile_options("-xhip")
+endif()
+
 set(HIPDNN_PLUGIN_ENGINE_SUBDIR "hipdnn_plugins/engines"
     CACHE STRING "Subdirectory for official hipDNN engine plugins"
 )
@@ -200,6 +205,9 @@ list(
     -Wno-error=unused-command-line-argument # Disable error for unused command line arguments
     -Wswitch-default # Warn if a switch statement does not have a default case
 )
+if(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "ppc64le")
+    list(APPEND HIPDNN_WARNING_COMPILE_OPTIONS -Wno-implicit-float-conversion)
+endif()
 
 add_compile_options(${EXTRA_COMPILE_OPTIONS})
 add_link_options(${EXTRA_LINK_OPTIONS})

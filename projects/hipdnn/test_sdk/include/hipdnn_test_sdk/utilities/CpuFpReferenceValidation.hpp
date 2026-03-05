@@ -57,6 +57,18 @@ public:
 
             if(absDiff > threshold)
             {
+#if defined(__powerpc64__) || defined(__PPC64__)
+                // Log error and mark as failed
+                HIPDNN_SDK_LOG_ERROR(
+		  "Validation failed at indices "
+                    << StreamVec(indices) << ": reference value = " << static_cast<float>(refValue)
+		    << ", implementation value = " << static_cast<float>(implValue)
+		    << ", absolute difference = " << static_cast<float>(absDiff)
+		    << ", threshold = " << static_cast<float>(threshold)
+		    << ", difference - threshold = " << static_cast<float>(absDiff - threshold)
+		    << ", (atol=" << static_cast<float>(_absoluteTolerance)
+		    << ", rtol=" << static_cast<float>(_relativeTolerance) << ")");
+#else
                 // Log error and mark as failed
                 HIPDNN_SDK_LOG_ERROR(
                     "Validation failed at indices "
@@ -65,6 +77,7 @@ public:
                     << ", absolute difference = " << absDiff << ", threshold = " << threshold
                     << ", difference - threshold = " << (absDiff - threshold)
                     << ", (atol=" << _absoluteTolerance << ", rtol=" << _relativeTolerance << ")");
+#endif
                 result.store(false, std::memory_order_relaxed);
             }
             return result.load(std::memory_order_relaxed);

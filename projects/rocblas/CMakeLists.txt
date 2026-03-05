@@ -33,6 +33,21 @@ unset(ENV{ROCM_BUILD_ID})
 
 project( rocblas LANGUAGES CXX )
 
+# Only apply this on PowerPC architectures
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+  # 1. The Alias: Map the problematic _Float16 to the supported __fp16
+  add_compile_definitions("$<$<COMPILE_LANGUAGE:CXX>:_Float16=__fp16>")
+
+  # 2. The Driver Flag: Tell Clang it's okay to pass these in registers
+  # Note: Using -Xclang because the driver was complaining earlier
+  set(PPC_PFE_FLAGS "-Xclang" "-fallow-half-arguments-and-returns")
+  add_compile_options("$<$<OR:$<COMPILE_LANGUAGE:CXX>,$<COMPILE_LANGUAGE:C>>:${PPC_PFE_FLAGS}>")
+
+  # 3. The Operator Block: Stop the headers from trying to use GPU-only math operators on host
+  add_compile_definitions("$<$<COMPILE_LANGUAGE:CXX>:__HIP_NO_HALF_OPERATORS__=1>")
+  add_compile_definitions("$<$<COMPILE_LANGUAGE:CXX>:__HIP_NO_HALF_CONVERSIONS__=1>")
+endif()
+
 # Append our library helper cmake path and the cmake path for hip (for convenience)
 list( APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 include(build-options) # library and client

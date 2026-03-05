@@ -84,7 +84,11 @@ public:
             auto input2Value = input2.getHostValue(input2Indices);
 
             // Apply operation and set output
+#if defined(__powerpc64__) || defined(__PPC64__)
+	    auto result = op(static_cast<float>(input1Value), static_cast<float>(input2Value));
+#else
             auto result = op(input1Value, input2Value);
+#endif
             output.setHostValue(hipdnn_test_sdk::detail::safeConvert<OutputType>(result), indices);
         };
 

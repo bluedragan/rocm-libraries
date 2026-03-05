@@ -12,6 +12,11 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(HIPBLASLT_PLUGIN "0.0.1")
 project(hipblaslt-provider VERSION ${HIPBLASLT_PLUGIN} LANGUAGES CXX)
 
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+    add_definitions(-D_Float16=float)
+    add_compile_options(-include "/home/rocm/src/TheRock/rocm-libraries/hip_ppc64le_fix.hpp")
+endif()
+
 if(NOT WIN32)
     # Only set if not already specified by user
     if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)

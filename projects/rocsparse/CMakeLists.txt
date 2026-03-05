@@ -90,6 +90,11 @@ option(BUILD_WITH_ROCBLAS "Enable building rocSPARSE with rocBLAS" ON)
 option(BUILD_WITH_ROCTX "Enable building rocSPARSE with rocTX" ON)
 option(BUILD_WITH_OFFLOAD_COMPRESS
        "Enable offload compression during compilation" ON)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+  set(BUILD_CLIENTS_TESTS OFF)
+  set(BUILD_CLIENTS_BENCHMARKS OFF)
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/clients/matrices")
+endif()
 
 # Clients utilize rocsparse fortran API and a fortran compiler
 if( NOT BUILD_FORTRAN_CLIENTS )
